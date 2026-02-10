@@ -88,16 +88,18 @@ class TelegramBot:
     
     async def _get_updates(self) -> list:
         """Get new updates from Telegram"""
-        response = await self.client.get(
-            f"{self.base_url}/getUpdates",
-            params={
-                "offset": self.last_update_id + 1,
-                "timeout": 30,
-                "allowed_updates": ["message"]
-            }
-        )
-        
-        data = response.json()
+        try:
+            response = await self.client.get(
+                f"{self.base_url}/getUpdates",
+                params={
+                    "offset": self.last_update_id + 1,
+                    "timeout": 30,
+                    "allowed_updates": ["message"]
+                },
+                timeout=35.0  # Slightly longer than Telegram's timeout
+            )
+            
+            data = response.json()
         if not data.get('ok'):
             return []
         
