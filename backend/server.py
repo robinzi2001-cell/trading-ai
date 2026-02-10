@@ -644,9 +644,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Background task for Telegram bot
+telegram_bot_task = None
+
+async def telegram_signal_callback(signal_data: dict):
+    """Callback when signal is received from Telegram bot"""
+    parsed = signal_data.get('parsed', {})
+    
+    if not parsed.get('asset') or not parsed.get('action'):
+        return
+    
+    # Create signal in database
+    signal = Signal(
+        source=SignalSource.TELEGRAM,
+        source_id=signal_data.get('source_id'),
+        asset=parsed['asset'],
+        action=parsed['action'],
+        entry=parsed['entry'],
+        stop_loss=parsed['stop_loss'],
+        take_profits=parsed.get('take_profits', []),
+        leverage=parsed.get('leverage', 1),
+        confidence=parsed.get('confidence', 0.5),
+        original_text=signal_data.get('text'),
+        metadata={'telegram_user': signal_data.get('user')}
+    )
+    
+    await db.signals.insert_one(signal.to_dict())
+    logger.info(f"Signal from Telegram bot stored: {signal.asset} {signal.action.value}")
+
 
 @app.on_event("startup")
 async def startup():
+    global telegram_bot_task
+    
     logger.info("Trading AI Backend starting...")
     
     # Load settings from DB
@@ -656,10 +686,25 @@ async def startup():
         trading_engine.update_settings(trading_settings)
         logger.info(f"Loaded settings: balance=${trading_settings.initial_balance}")
     
+    # Initialize Telegram bot
+    bot = await init_telegram_bot(telegram_signal_callback)
+    if bot:
+        telegram_bot_task = asyncio.create_task(bot.start_polling())
+        logger.info("Telegram bot started")
+    
     logger.info("Trading AI Backend started successfully")
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    global telegram_bot_task
+    
+    # Stop Telegram bot
+    bot = get_telegram_bot()
+    if bot:
+        await bot.stop()
+    if telegram_bot_task:
+        telegram_bot_task.cancel()
+    
     client.close()
     logger.info("Trading AI Backend shutdown complete")
