@@ -22,6 +22,8 @@ from models.settings import TradingSettings, RiskSettings, SettingsUpdate
 from services.signal_parser import SignalParser
 from services.risk_manager import RiskManager
 from services.trading_engine import TradingEngine
+from services.telegram_listener import TelegramSignalParser, KNOWN_CHANNELS
+from services.binance_broker import create_binance_broker, BinanceAPIError
 
 # Load environment
 ROOT_DIR = Path(__file__).parent
