@@ -681,6 +681,43 @@ async def send_telegram_message(chat_id: int, message: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/telegram/channels/status")
+async def get_channel_monitor_status():
+    """Get channel monitor status"""
+    monitor = get_channel_monitor()
+    
+    if not monitor:
+        return {
+            "configured": bool(os.environ.get('TELEGRAM_API_ID')),
+            "authorized": False,
+            "running": False,
+            "channels": []
+        }
+    
+    try:
+        authorized = monitor.client and await monitor.client.is_user_authorized()
+        return {
+            "configured": True,
+            "authorized": authorized,
+            "running": monitor.running,
+            "channels": [
+                {
+                    "username": info.get("username"),
+                    "title": info.get("title"),
+                    "id": ch_id
+                }
+                for ch_id, info in monitor.monitored_entities.items()
+            ],
+            "default_channels": monitor.DEFAULT_CHANNELS
+        }
+    except Exception as e:
+        return {
+            "configured": True,
+            "authorized": False,
+            "error": str(e)
+        }
+
+
 # Include router in app
 app.include_router(api_router)
 
