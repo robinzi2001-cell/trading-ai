@@ -100,14 +100,17 @@ class TelegramBot:
             )
             
             data = response.json()
-        if not data.get('ok'):
+            if not data.get('ok'):
+                return []
+            
+            updates = data.get('result', [])
+            if updates:
+                self.last_update_id = updates[-1]['update_id']
+            
+            return updates
+        except Exception as e:
+            logger.debug(f"Get updates error: {e}")
             return []
-        
-        updates = data.get('result', [])
-        if updates:
-            self.last_update_id = updates[-1]['update_id']
-        
-        return updates
     
     async def _process_update(self, update: dict):
         """Process an incoming update"""
