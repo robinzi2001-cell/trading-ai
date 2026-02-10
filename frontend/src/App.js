@@ -1,52 +1,229 @@
-import { useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
+
+// Components
+import Sidebar from "./components/Sidebar";
+import Dashboard from "./pages/Dashboard";
+import Signals from "./pages/Signals";
+import Trades from "./pages/Trades";
+import Portfolio from "./pages/Portfolio";
+import Settings from "./pages/Settings";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+export const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+// Create axios instance with base URL
+export const api = axios.create({
+  baseURL: API,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+function App() {
+  const [signals, setSignals] = useState([]);
+  const [trades, setTrades] = useState([]);
+  const [positions, setPositions] = useState([]);
+  const [portfolio, setPortfolio] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      const [signalsRes, tradesRes, positionsRes, portfolioRes, statsRes, settingsRes] = await Promise.all([
+        api.get('/signals?limit=50'),
+        api.get('/trades?limit=50'),
+        api.get('/positions'),
+        api.get('/portfolio'),
+        api.get('/portfolio/stats'),
+        api.get('/settings')
+      ]);
+
+      setSignals(signalsRes.data);
+      setTrades(tradesRes.data);
+      setPositions(positionsRes.data);
+      setPortfolio(portfolioRes.data);
+      setStats(statsRes.data);
+      setSettings(settingsRes.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const executeSignal = async (signalId, quantity = null) => {
+    try {
+      const response = await api.post('/trades/execute', {
+        signal_id: signalId,
+        quantity: quantity
+      });
+      toast.success(`Trade executed: ${response.data.symbol}`);
+      fetchData();
+      return response.data;
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to execute trade');
+      throw error;
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const closeTrade = async (tradeId, reason = 'manual') => {
+    try {
+      const response = await api.post('/trades/close', {
+        trade_id: tradeId,
+        exit_reason: reason
+      });
+      toast.success('Trade closed successfully');
+      fetchData();
+      return response.data;
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to close trade');
+      throw error;
+    }
+  };
+
+  const dismissSignal = async (signalId) => {
+    try {
+      await api.delete(`/signals/${signalId}`);
+      toast.success('Signal dismissed');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to dismiss signal');
+    }
+  };
+
+  const createSampleSignals = async () => {
+    try {
+      await api.post('/demo/sample-signals');
+      toast.success('Sample signals created');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to create sample signals');
+    }
+  };
+
+  const resetDemo = async () => {
+    try {
+      await api.post('/demo/reset');
+      toast.success('Demo account reset');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to reset demo');
+    }
+  };
+
+  const updateSettings = async (newSettings) => {
+    try {
+      const response = await api.put('/settings', newSettings);
+      setSettings(response.data);
+      toast.success('Settings updated');
+      return response.data;
+    } catch (error) {
+      toast.error('Failed to update settings');
+      throw error;
+    }
+  };
+
+  const pendingSignals = signals.filter(s => !s.executed && !s.dismissed);
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
-  return (
-    <div className="App">
+    <div className="App dark">
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <div className="flex min-h-screen bg-[#09090b]">
+          <Sidebar 
+            pendingSignalsCount={pendingSignals.length}
+            openTradesCount={positions.length}
+          />
+          <main className="flex-1 md:pl-64 min-h-screen">
+            <Routes>
+              <Route 
+                path="/" 
+                element={
+                  <Dashboard 
+                    signals={pendingSignals}
+                    trades={trades}
+                    positions={positions}
+                    portfolio={portfolio}
+                    stats={stats}
+                    loading={loading}
+                    onExecuteSignal={executeSignal}
+                    onDismissSignal={dismissSignal}
+                    onCloseTrade={closeTrade}
+                    onCreateSampleSignals={createSampleSignals}
+                  />
+                } 
+              />
+              <Route 
+                path="/signals" 
+                element={
+                  <Signals 
+                    signals={signals}
+                    loading={loading}
+                    onExecuteSignal={executeSignal}
+                    onDismissSignal={dismissSignal}
+                    onCreateSampleSignals={createSampleSignals}
+                  />
+                } 
+              />
+              <Route 
+                path="/trades" 
+                element={
+                  <Trades 
+                    trades={trades}
+                    positions={positions}
+                    loading={loading}
+                    onCloseTrade={closeTrade}
+                  />
+                } 
+              />
+              <Route 
+                path="/portfolio" 
+                element={
+                  <Portfolio 
+                    portfolio={portfolio}
+                    stats={stats}
+                    trades={trades}
+                    loading={loading}
+                  />
+                } 
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <Settings 
+                    settings={settings}
+                    onUpdate={updateSettings}
+                    onReset={resetDemo}
+                    loading={loading}
+                  />
+                } 
+              />
+            </Routes>
+          </main>
+        </div>
       </BrowserRouter>
+      <Toaster 
+        theme="dark" 
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#18181b',
+            border: '1px solid #27272a',
+            color: '#fff'
+          }
+        }}
+      />
     </div>
   );
 }
