@@ -473,9 +473,15 @@ async def get_known_channels():
     return {"channels": channels}
 
 
+from pydantic import BaseModel as PydanticBaseModel
+
+class TextInput(PydanticBaseModel):
+    text: str
+
 @api_router.post("/telegram/parse")
-async def parse_telegram_signal(text: str, channel: str = "evening_trader"):
+async def parse_telegram_signal(input: TextInput, channel: str = "evening_trader"):
     """Parse a signal in Telegram format"""
+    text = input.text
     if channel == "evening_trader":
         parsed = TelegramSignalParser.parse_evening_trader(text)
     elif channel == "fat_pig_signals":
