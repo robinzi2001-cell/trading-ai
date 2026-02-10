@@ -456,6 +456,175 @@ async def create_sample_signals():
     return {"success": True, "created": len(created), "signals": created}
 
 
+# ============ TELEGRAM INTEGRATION ============
+
+@api_router.get("/telegram/channels")
+async def get_known_channels():
+    """Get list of known Telegram signal channels"""
+    channels = []
+    for key, info in KNOWN_CHANNELS.items():
+        channels.append({
+            "id": key,
+            "name": info.name,
+            "username": info.username,
+            "signal_type": info.signal_type.value,
+            "format_hints": info.format_hints
+        })
+    return {"channels": channels}
+
+
+@api_router.post("/telegram/parse")
+async def parse_telegram_signal(text: str, channel: str = "evening_trader"):
+    """Parse a signal in Telegram format"""
+    if channel == "evening_trader":
+        parsed = TelegramSignalParser.parse_evening_trader(text)
+    elif channel == "fat_pig_signals":
+        parsed = TelegramSignalParser.parse_fat_pig_signals(text)
+    else:
+        # Use generic parser
+        parsed = signal_parser.parse(text)
+        parsed = {
+            "asset": parsed.asset,
+            "action": parsed.action,
+            "entry": parsed.entry,
+            "stop_loss": parsed.stop_loss,
+            "take_profits": parsed.take_profits,
+            "leverage": parsed.leverage,
+            "confidence": parsed.confidence
+        }
+    
+    return {"parsed": parsed, "channel": channel}
+
+
+@api_router.get("/telegram/config")
+async def get_telegram_config():
+    """Get Telegram configuration status"""
+    settings = await db.settings.find_one({"type": "telegram"}, {"_id": 0})
+    
+    has_credentials = bool(
+        os.environ.get('TELEGRAM_API_ID') and 
+        os.environ.get('TELEGRAM_API_HASH')
+    )
+    
+    return {
+        "configured": has_credentials,
+        "enabled": settings.get('enabled', False) if settings else False,
+        "channels": settings.get('channels', []) if settings else [],
+        "instructions": {
+            "step1": "Get API credentials from https://my.telegram.org",
+            "step2": "Set TELEGRAM_API_ID and TELEGRAM_API_HASH in .env",
+            "step3": "Add channel usernames to monitor",
+            "recommended_channels": ["Evening Trader", "Fat Pig Signals"]
+        }
+    }
+
+
+@api_router.put("/telegram/config")
+async def update_telegram_config(enabled: bool = None, channels: List[str] = None):
+    """Update Telegram configuration"""
+    update = {}
+    if enabled is not None:
+        update['enabled'] = enabled
+    if channels is not None:
+        update['channels'] = channels
+    
+    if update:
+        update['updated_at'] = datetime.now(timezone.utc).isoformat()
+        await db.settings.update_one(
+            {"type": "telegram"},
+            {"$set": update},
+            upsert=True
+        )
+    
+    return await get_telegram_config()
+
+
+# ============ BINANCE INTEGRATION ============
+
+@api_router.get("/binance/config")
+async def get_binance_config():
+    """Get Binance configuration status"""
+    has_credentials = bool(
+        os.environ.get('BINANCE_API_KEY') and 
+        os.environ.get('BINANCE_SECRET')
+    )
+    
+    is_testnet = os.environ.get('BINANCE_TESTNET', 'true').lower() == 'true'
+    
+    return {
+        "configured": has_credentials,
+        "testnet": is_testnet,
+        "network": "testnet" if is_testnet else "live",
+        "instructions": {
+            "testnet": {
+                "url": "https://testnet.binancefuture.com",
+                "step1": "Create account at testnet.binancefuture.com",
+                "step2": "Generate API keys in account settings",
+                "step3": "Set BINANCE_API_KEY and BINANCE_SECRET in .env"
+            },
+            "live": {
+                "url": "https://www.binance.com",
+                "warning": "Live trading uses real money! Start with testnet first."
+            }
+        }
+    }
+
+
+@api_router.get("/binance/balance")
+async def get_binance_balance():
+    """Get Binance account balance"""
+    api_key = os.environ.get('BINANCE_API_KEY')
+    api_secret = os.environ.get('BINANCE_SECRET')
+    
+    if not api_key or not api_secret:
+        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
+    
+    try:
+        broker = create_binance_broker(api_key, api_secret, testnet=True)
+        balance = await broker.get_balance()
+        await broker.close()
+        return balance
+    except BinanceAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get balance: {e}")
+
+
+@api_router.get("/binance/price/{symbol}")
+async def get_binance_price(symbol: str):
+    """Get current price for a symbol"""
+    try:
+        broker = create_binance_broker(testnet=True)
+        price = await broker.get_price(symbol)
+        ticker = await broker.get_ticker(symbol)
+        await broker.close()
+        return {
+            "symbol": symbol,
+            "price": price,
+            "ticker": ticker
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to get price: {e}")
+
+
+@api_router.get("/binance/positions")
+async def get_binance_positions():
+    """Get open positions on Binance"""
+    api_key = os.environ.get('BINANCE_API_KEY')
+    api_secret = os.environ.get('BINANCE_SECRET')
+    
+    if not api_key or not api_secret:
+        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
+    
+    try:
+        broker = create_binance_broker(api_key, api_secret, testnet=True)
+        positions = await broker.get_positions()
+        await broker.close()
+        return {"positions": positions}
+    except BinanceAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # Include router in app
 app.include_router(api_router)
 
