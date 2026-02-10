@@ -26,6 +26,7 @@ from services.trading_engine import TradingEngine
 from services.telegram_listener import TelegramSignalParser, KNOWN_CHANNELS
 from services.binance_broker import create_binance_broker, BinanceAPIError
 from services.telegram_bot import init_telegram_bot, get_telegram_bot
+from services.telegram_channel_monitor import init_channel_monitor, get_channel_monitor
 
 # Load environment
 ROOT_DIR = Path(__file__).parent
