@@ -693,11 +693,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Background task for Telegram bot
+# Background tasks
 telegram_bot_task = None
+channel_monitor_task = None
 
 async def telegram_signal_callback(signal_data: dict):
-    """Callback when signal is received from Telegram bot"""
+    """Callback when signal is received from Telegram bot or channel"""
     parsed = signal_data.get('parsed', {})
     
     if not parsed.get('asset') or not parsed.get('action'):
@@ -715,11 +716,16 @@ async def telegram_signal_callback(signal_data: dict):
         leverage=parsed.get('leverage', 1),
         confidence=parsed.get('confidence', 0.5),
         original_text=signal_data.get('text'),
-        metadata={'telegram_user': signal_data.get('user')}
+        metadata={
+            'telegram_user': signal_data.get('user'),
+            'channel_name': signal_data.get('channel_name'),
+            'channel_username': signal_data.get('channel_username')
+        }
     )
     
     await db.signals.insert_one(signal.to_dict())
-    logger.info(f"Signal from Telegram bot stored: {signal.asset} {signal.action.value}")
+    source = signal_data.get('channel_name') or signal_data.get('user') or 'Telegram'
+    logger.info(f"Signal from {source}: {signal.asset} {signal.action.value}")
 
 
 @app.on_event("startup")
