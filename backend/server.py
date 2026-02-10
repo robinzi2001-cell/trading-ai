@@ -618,6 +618,53 @@ async def get_binance_price(symbol: str):
 async def get_binance_positions():
     """Get open positions on Binance"""
     api_key = os.environ.get('BINANCE_API_KEY')
+
+
+# ============ TELEGRAM BOT ENDPOINTS ============
+
+@api_router.get("/telegram/bot/status")
+async def get_telegram_bot_status():
+    """Get Telegram bot status"""
+    bot = get_telegram_bot()
+    
+    if not bot:
+        return {
+            "configured": bool(os.environ.get('TELEGRAM_BOT_TOKEN')),
+            "running": False,
+            "bot_username": None,
+            "instructions": "Add TELEGRAM_BOT_TOKEN to .env and restart"
+        }
+    
+    try:
+        me = await bot.get_me()
+        return {
+            "configured": True,
+            "running": bot.running,
+            "bot_username": me.get('username'),
+            "bot_name": me.get('first_name'),
+            "bot_link": f"https://t.me/{me.get('username')}"
+        }
+    except Exception as e:
+        return {
+            "configured": True,
+            "running": False,
+            "error": str(e)
+        }
+
+
+@api_router.post("/telegram/bot/send")
+async def send_telegram_message(chat_id: int, message: str):
+    """Send a message via the bot"""
+    bot = get_telegram_bot()
+    
+    if not bot:
+        raise HTTPException(status_code=400, detail="Telegram bot not configured")
+    
+    try:
+        result = await bot.send_message(chat_id, message)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     api_secret = os.environ.get('BINANCE_SECRET')
     
     if not api_key or not api_secret:
