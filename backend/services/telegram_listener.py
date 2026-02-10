@@ -18,6 +18,8 @@ try:
 except ImportError:
     TELETHON_AVAILABLE = False
     TelegramClient = None
+    Channel = None
+    Message = None
 
 logger = logging.getLogger(__name__)
 
