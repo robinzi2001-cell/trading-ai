@@ -619,6 +619,18 @@ async def get_binance_price(symbol: str):
 async def get_binance_positions():
     """Get open positions on Binance"""
     api_key = os.environ.get('BINANCE_API_KEY')
+    api_secret = os.environ.get('BINANCE_SECRET')
+    
+    if not api_key or not api_secret:
+        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
+    
+    try:
+        broker = create_binance_broker(api_key, api_secret, testnet=True)
+        positions = await broker.get_positions()
+        await broker.close()
+        return {"positions": positions}
+    except BinanceAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ============ TELEGRAM BOT ENDPOINTS ============
@@ -666,18 +678,6 @@ async def send_telegram_message(chat_id: int, message: str):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    api_secret = os.environ.get('BINANCE_SECRET')
-    
-    if not api_key or not api_secret:
-        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
-    
-    try:
-        broker = create_binance_broker(api_key, api_secret, testnet=True)
-        positions = await broker.get_positions()
-        await broker.close()
-        return {"positions": positions}
-    except BinanceAPIError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 # Include router in app
