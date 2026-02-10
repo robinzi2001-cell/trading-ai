@@ -294,6 +294,45 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
         {/* TELEGRAM TAB */}
         <TabsContent value="telegram">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Bot Status Card */}
+            {botStatus?.configured && (
+              <Card className="bg-emerald-500/5 border-emerald-500/20 lg:col-span-2">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-white flex items-center gap-2">
+                          @{botStatus.bot_username}
+                          {botStatus.running && (
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 live-indicator" />
+                          )}
+                        </h3>
+                        <p className="text-xs text-zinc-400">
+                          {botStatus.running ? 'Bot ist aktiv und empfängt Signale' : 'Bot ist konfiguriert aber nicht aktiv'}
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href={botStatus.bot_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium flex items-center gap-2 transition-colors"
+                    >
+                      Bot öffnen
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                  <div className="mt-3 p-3 rounded-lg bg-zinc-900/50 text-xs text-zinc-400">
+                    <strong className="text-white">So nutzt du den Bot:</strong> Sende Trading-Signale direkt an den Bot. 
+                    Er parsed sie automatisch und fügt sie dem Dashboard hinzu.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-zinc-900/50 border-white/5">
               <CardHeader>
                 <CardTitle className="font-heading text-lg font-semibold tracking-tight uppercase text-white flex items-center gap-2">
