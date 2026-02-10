@@ -7,16 +7,17 @@
 
 > Ein automatisiertes Trading-System mit Multi-Source Signal Intake, intelligenter Signalfilterung und Paper Trading Engine.
 
-<p align="center">
-  <img src="docs/images/dashboard-preview.png" alt="Trading AI Dashboard" width="800"/>
-</p>
-
 ## 🌟 Features
+
+### ✅ Telegram Bot Integration - NEU!
+- **@traiding_r2d2_bot** - Sende Signale direkt an den Bot
+- Automatisches Signal-Parsing
+- Befehle: `/start`, `/help`, `/status`, `/portfolio`
 
 ### ✅ Signal Intake (Phase 1) - Fertig
 - **Webhook API** - REST API (TradingView-kompatibel) für externe Signale
-- **Telegram Integration** - Überwacht Channels und parst Trading-Signale (geplant)
-- **Email Parser** - IMAP-Polling mit HTML-Parsing (geplant)
+- **Telegram Bot** - Empfange Signale via Bot-Nachricht
+- **Telegram Channel Listener** - Überwacht Channels (Evening Trader, Fat Pig Signals)
 - **Multi-Format Parser** - Erkennt automatisch Signal-Formate mit Confidence-Score
 
 ### ✅ Paper Trading Engine (Phase 2) - Fertig
@@ -30,6 +31,26 @@
 - **Signal Cards** - Visuelle Darstellung mit Confidence-Score und R:R Ratio
 - **Position Management** - Ein-Klick Trade-Ausführung und Schließung
 - **Performance Charts** - Equity Curve, Win Rate, Cumulative P&L
+
+## 🚀 Telegram Bot
+
+Dein Bot: [@traiding_r2d2_bot](https://t.me/traiding_r2d2_bot)
+
+**Signal senden:**
+```
+BTC/USDT LONG
+Entry: 96500
+SL: 94000
+TP1: 98000
+TP2: 100000
+Leverage: 5x
+```
+
+**Befehle:**
+- `/start` - Bot starten
+- `/help` - Hilfe anzeigen
+- `/status` - System-Status
+- `/signal` - Signal-Format Hilfe
 
 ### 🛡️ Risk Management
 - **Max Risk per Trade** - Konfigurierbar (Standard: 2%)
