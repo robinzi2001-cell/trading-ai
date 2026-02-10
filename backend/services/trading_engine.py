@@ -111,7 +111,7 @@ class TradingEngine:
         self.portfolio.open_positions = len(self.positions)
         self.portfolio.total_positions_value = sum(p.quantity * p.current_price for p in self.positions.values())
         
-        logger.success(f"Trade executed: {trade.id}")
+        logger.info(f"Trade executed: {trade.id}")
         logger.info(f"   Entry: ${trade.entry_price:.2f}")
         logger.info(f"   Size: {trade.quantity:.6f}")
         logger.info(f"   SL: ${trade.stop_loss:.2f}" if trade.stop_loss else "   SL: None")
@@ -167,7 +167,7 @@ class TradingEngine:
         
         self.portfolio.open_positions = len(self.positions)
         
-        logger.success(f"Trade closed: {trade_id}")
+        logger.info(f"Trade closed: {trade_id}")
         logger.info(f"   Exit: ${trade.exit_price:.2f}")
         logger.info(f"   P&L: ${trade.realized_pnl:.2f} ({trade.realized_pnl_percent:.2f}%)")
         
