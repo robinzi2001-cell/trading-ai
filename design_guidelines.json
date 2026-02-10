@@ -1,0 +1,138 @@
+{
+  "project_name": "Trading KI",
+  "theme": "dark",
+  "design_philosophy": {
+    "identity": "The Performance Pro",
+    "core_principles": [
+      "Information Density over Whitespace",
+      "Precision over Decoration",
+      "Dark Mode Mandatory",
+      "Functionality is Beauty"
+    ],
+    "mood": "Elite, Athletic, High-Frequency, Trusted"
+  },
+  "typography": {
+    "font_family": {
+      "heading": "Barlow Condensed, sans-serif",
+      "body": "Manrope, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl font-bold tracking-tight uppercase",
+      "h2": "text-2xl font-semibold tracking-tight uppercase",
+      "h3": "text-xl font-medium tracking-normal",
+      "body": "text-sm leading-relaxed",
+      "small": "text-xs text-muted-foreground",
+      "mono_lg": "font-mono text-lg tracking-tight",
+      "mono_sm": "font-mono text-xs tracking-wide"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#09090b",
+      "surface": "#18181b",
+      "surface_highlight": "#27272a",
+      "border": "#27272a",
+      "primary": "#FFFFFF",
+      "secondary": "#a1a1aa",
+      "accent_success": "#22c55e",
+      "accent_danger": "#ef4444",
+      "accent_brand": "#3b82f6",
+      "accent_warning": "#f59e0b"
+    },
+    "usage": {
+      "body_bg": "bg-[#09090b]",
+      "card_bg": "bg-[#18181b]",
+      "text_primary": "text-white",
+      "text_secondary": "text-zinc-400",
+      "border_subtle": "border-zinc-800",
+      "profit_text": "text-emerald-500",
+      "loss_text": "text-red-500",
+      "active_element": "ring-1 ring-blue-500 bg-blue-500/10"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "header": "bg-black/40 backdrop-blur-xl border-b border-white/10",
+      "overlay": "bg-black/60 backdrop-blur-md"
+    },
+    "borders": {
+      "default": "border border-white/10",
+      "active": "border border-blue-500/50 shadow-[0_0_15px_-3px_rgba(59,130,246,0.3)]",
+      "glow": "shadow-[0_0_20px_-5px_rgba(255,255,255,0.1)]"
+    },
+    "micro_interactions": {
+      "hover_lift": "hover:-translate-y-[1px] transition-transform duration-200",
+      "button_press": "active:scale-95 transition-transform duration-100"
+    }
+  },
+  "layout": {
+    "grid_system": "grid grid-cols-1 md:grid-cols-12 gap-4 p-4",
+    "sidebar": "w-64 fixed h-screen border-r border-white/10 bg-[#09090b] hidden md:block",
+    "main_content": "md:pl-64 min-h-screen bg-[#09090b]",
+    "container_padding": "p-4 md:p-6 lg:p-8"
+  },
+  "components": {
+    "SignalCard": {
+      "description": "High-priority trading signal card with tracing beam effect",
+      "structure": "Card root relative overflow-hidden group hover:border-blue-500/50 transition-colors",
+      "features": ["Risk score badge", "Source avatar", "Action buttons (Execute/Dismiss)"]
+    },
+    "TradePanel": {
+      "description": "Dense form for manual trade execution",
+      "structure": "Grid layout with input groups for entry, stop loss, take profit",
+      "features": ["Calculated risk display", "Leverage slider", "One-click execution"]
+    },
+    "MetricWidget": {
+      "description": "Small stat card for portfolio overview",
+      "structure": "Flex row justify-between items-center p-4 bg-zinc-900/50 border border-white/5",
+      "features": ["Label", "Value (Mono font)", "Trend indicator (Icon + %)"]
+    },
+    "DataTable": {
+      "description": "High-density table for history and active trades",
+      "structure": "Shadcn Table with compact padding (py-2)",
+      "features": ["Sticky header", "Row hover highlight", "Status badges"]
+    }
+  },
+  "image_urls": {
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1767175620484-1ed37931a0d1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHByb2Zlc3Npb25hbCUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc3MDcxOTgwOHww&ixlib=rb-4.1.0&q=85",
+        "category": "Signal Source - Hedge Fund"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1618371690240-e0d46eead4b8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHw0fHxjb3Jwb3JhdGUlMjBoZWFkc2hvdCUyMHByb2Zlc3Npb25hbCUyMGRhcmslMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc3MDcxOTgwOHww&ixlib=rb-4.1.0&q=85",
+        "category": "Signal Source - Crypto Whale"
+      }
+    ],
+    "backgrounds": [
+      {
+        "url": "https://images.pexels.com/photos/6203470/pexels-photo-6203470.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "Login Background"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Install 'lucide-react' and 'recharts' immediately.",
+    "Add 'Barlow Condensed' and 'Manrope' from Google Fonts in index.html or import in CSS.",
+    "Force DARK MODE: Add 'dark' class to the root HTML element or body. Do not implement a light mode toggle.",
+    "Override Shadcn 'card' background to '#18181b' and 'border' to '#27272a' in tailwind.config.js.",
+    "Use 'recharts' for all charts. Style them with 'Tooltip' using a custom dark contentStyle.",
+    "Ensure all numbers (prices, percentages) use the 'JetBrains Mono' font family.",
+    "Implement the 'Tracing Beam' effect on the highest probability signal card using a simple CSS animation or framer-motion if available.",
+    "Use 'sonner' for all trade notifications (Success/Error)."
+  ],
+  "UNIVERSAL_GUIDELINES": {
+    "do_not_use": [
+      "Gradients on text",
+      "Rounded corners > 12px (Keep it sharp, max 8px or 4px)",
+      "Light mode components",
+      "Serif fonts"
+    ],
+    "must_use": [
+      "data-testid on all interactive elements",
+      "Tailwind 'space-y' or 'gap' for spacing (no margins on children)",
+      "High contrast text for accessibility"
+    ]
+  }
+}
