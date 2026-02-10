@@ -41,6 +41,7 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
   const [telegramConfig, setTelegramConfig] = useState(null);
   const [binanceConfig, setBinanceConfig] = useState(null);
   const [knownChannels, setKnownChannels] = useState([]);
+  const [botStatus, setBotStatus] = useState(null);
 
   useEffect(() => {
     fetchIntegrationConfigs();
@@ -48,14 +49,16 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
 
   const fetchIntegrationConfigs = async () => {
     try {
-      const [tgRes, bnRes, channelsRes] = await Promise.all([
+      const [tgRes, bnRes, channelsRes, botRes] = await Promise.all([
         api.get('/telegram/config'),
         api.get('/binance/config'),
-        api.get('/telegram/channels')
+        api.get('/telegram/channels'),
+        api.get('/telegram/bot/status')
       ]);
       setTelegramConfig(tgRes.data);
       setBinanceConfig(bnRes.data);
       setKnownChannels(channelsRes.data.channels || []);
+      setBotStatus(botRes.data);
     } catch (error) {
       console.error('Failed to fetch integration configs:', error);
     }
