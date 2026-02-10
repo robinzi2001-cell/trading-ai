@@ -730,7 +730,7 @@ async def telegram_signal_callback(signal_data: dict):
 
 @app.on_event("startup")
 async def startup():
-    global telegram_bot_task
+    global telegram_bot_task, channel_monitor_task
     
     logger.info("Trading AI Backend starting...")
     
@@ -747,12 +747,25 @@ async def startup():
         telegram_bot_task = asyncio.create_task(bot.start_polling())
         logger.info("Telegram bot started")
     
+    # Initialize Channel Monitor (Evening Trader, Fat Pig Signals)
+    monitor = await init_channel_monitor(telegram_signal_callback)
+    if monitor:
+        # Check if already authorized
+        try:
+            if await monitor.client.is_user_authorized():
+                channel_monitor_task = asyncio.create_task(monitor.start_monitoring())
+                logger.info("Channel monitor started (Evening Trader, Fat Pig Signals)")
+            else:
+                logger.warning("Channel monitor not authorized - run login first")
+        except Exception as e:
+            logger.warning(f"Channel monitor setup: {e}")
+    
     logger.info("Trading AI Backend started successfully")
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    global telegram_bot_task
+    global telegram_bot_task, channel_monitor_task
     
     # Stop Telegram bot
     bot = get_telegram_bot()
@@ -760,6 +773,13 @@ async def shutdown():
         await bot.stop()
     if telegram_bot_task:
         telegram_bot_task.cancel()
+    
+    # Stop Channel monitor
+    monitor = get_channel_monitor()
+    if monitor:
+        await monitor.stop()
+    if channel_monitor_task:
+        channel_monitor_task.cancel()
     
     client.close()
     logger.info("Trading AI Backend shutdown complete")
