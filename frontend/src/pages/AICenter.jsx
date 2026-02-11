@@ -148,6 +148,30 @@ export default function AICenter() {
               />
             </div>
 
+            {/* Broker Mode */}
+            <div className={cn(
+              "p-3 rounded-lg flex items-center justify-between",
+              autoExecuteStatus?.use_binance 
+                ? "bg-yellow-500/10 border border-yellow-500/30" 
+                : "bg-zinc-800/50"
+            )}>
+              <div className="flex items-center gap-2">
+                <Zap className={cn("w-4 h-4", autoExecuteStatus?.use_binance ? "text-yellow-500" : "text-zinc-500")} />
+                <div>
+                  <span className="text-sm font-medium text-white">
+                    {autoExecuteStatus?.use_binance ? 'Binance Testnet' : 'Paper Trading'}
+                  </span>
+                  <p className="text-[10px] text-zinc-500">
+                    {autoExecuteStatus?.use_binance ? 'Echte Orders auf Testnet' : 'Simulierte Trades'}
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={autoExecuteStatus?.use_binance || false}
+                onCheckedChange={(checked) => updateAutoExecute({ use_binance: checked })}
+              />
+            </div>
+
             {/* Settings */}
             <div className="space-y-4">
               <div className="space-y-2">
