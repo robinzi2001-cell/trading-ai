@@ -39,6 +39,7 @@ class AutoExecuteConfig:
 class AutoExecuteEngine:
     """
     Automatically executes trading signals with AI analysis.
+    Supports Paper Trading and Binance Testnet.
     """
     
     def __init__(
@@ -51,11 +52,12 @@ class AutoExecuteEngine:
         self.config = config or AutoExecuteConfig()
         self.notification_callback = notification_callback
         self.ai_analyzer = get_ai_analyzer()
+        self.trading_service = None  # Lazy init for Binance
         
         self.daily_trades = 0
         self.last_reset_date = datetime.now(timezone.utc).date()
         
-        logger.info(f"AutoExecuteEngine initialized (enabled={self.config.enabled})")
+        logger.info(f"AutoExecuteEngine initialized (enabled={self.config.enabled}, binance={self.config.use_binance})")
     
     def update_config(self, **kwargs):
         """Update configuration"""
