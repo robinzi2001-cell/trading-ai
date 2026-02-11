@@ -33,7 +33,16 @@ NITTER_INSTANCES = [
     "nitter.privacydev.net",
     "nitter.poast.org",
     "nitter.1d4.us",
+    "nitter.cz",
+    "xcancel.com",
 ]
+
+# Alternative RSS services
+ALTERNATIVE_RSS_SERVICES = {
+    "rss_bridge": "https://rss-bridge.org/bridge01/?action=display&bridge=TwitterBridge&context=By+username&u={username}&format=Atom",
+    "rss_app": "https://rss.app/feeds/v1.1/twitter/{username}.xml",
+    "fivefilters": "https://politepol.com/fd/FiveFilters-Twitter/{username}",
+}
 
 # Default accounts to monitor
 DEFAULT_ACCOUNTS = [
