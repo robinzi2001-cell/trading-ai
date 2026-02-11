@@ -954,6 +954,35 @@ async def telegram_signal_callback(signal_data: dict):
     await db.signals.insert_one(signal.to_dict())
     source = signal_data.get('channel_name') or signal_data.get('user') or 'Telegram'
     logger.info(f"Signal from {source}: {signal.asset} {signal.action.value}")
+    
+    # Send notification
+    notifier = get_notification_service()
+    if notifier:
+        await notifier.send_signal_alert(signal.to_dict())
+    
+    # Auto-execute if enabled
+    auto_engine = get_auto_execute_engine()
+    if auto_engine and auto_engine.config.enabled:
+        result = await auto_engine.process_signal(signal.to_dict())
+        if result.get('executed'):
+            logger.info(f"Auto-executed trade for {signal.asset}")
+            # Mark signal as executed
+            await db.signals.update_one(
+                {"id": signal.id},
+                {"$set": {"executed": True}}
+            )
+
+
+async def notification_callback(message: str):
+    """Send notification via bot"""
+    bot = get_telegram_bot()
+    notifier = get_notification_service()
+    if bot and notifier and notifier.chat_ids:
+        for chat_id in notifier.chat_ids:
+            try:
+                await bot.send_message(chat_id, message)
+            except Exception as e:
+                logger.error(f"Notification failed: {e}")
 
 
 @app.on_event("startup")
@@ -974,6 +1003,25 @@ async def startup():
     if bot:
         telegram_bot_task = asyncio.create_task(bot.start_polling())
         logger.info("Telegram bot started")
+    
+    # Initialize Notification Service
+    notifier = init_notification_service(bot)
+    logger.info("Notification service initialized")
+    
+    # Initialize Auto-Execute Engine
+    auto_config = AutoExecuteConfig(
+        enabled=False,  # Disabled by default, enable via API
+        min_confidence=0.6,
+        min_ai_score=60,
+        require_ai_approval=True,
+        max_daily_trades=10
+    )
+    init_auto_execute_engine(
+        trading_engine=trading_engine,
+        config=auto_config,
+        notification_callback=notification_callback
+    )
+    logger.info("Auto-execute engine initialized (disabled)")
     
     # Initialize Channel Monitor (Evening Trader, Fat Pig Signals)
     monitor = await init_channel_monitor(telegram_signal_callback)
