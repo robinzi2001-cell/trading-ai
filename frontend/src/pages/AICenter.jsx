@@ -42,10 +42,12 @@ export default function AICenter() {
     try {
       const [statusRes, accountsRes] = await Promise.all([
         api.get('/auto-execute/status'),
-        api.get('/ai/influential-accounts')
+        api.get('/ai/influential-accounts'),
+        api.get('/twitter/rss/status')
       ]);
       setAutoExecuteStatus(statusRes.data);
       setInfluentialAccounts(accountsRes.data.accounts || []);
+      setTwitterRssStatus(rssRes.data);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -61,6 +63,23 @@ export default function AICenter() {
       toast.success('Auto-Execute aktualisiert');
     } catch (error) {
       toast.error('Fehler beim Aktualisieren');
+    }
+  };
+
+  const checkTwitterRss = async () => {
+    try {
+      setAnalyzing(true);
+      const response = await api.post('/twitter/rss/check');
+      if (response.data.tweets_found > 0) {
+        toast.success(`${response.data.tweets_found} neue Tweets gefunden`);
+      } else {
+        toast.info('Keine neuen Tweets gefunden');
+      }
+      fetchData(); // Refresh data
+    } catch (error) {
+      toast.error('Fehler beim Abrufen');
+    } finally {
+      setAnalyzing(false);
     }
   };
 
