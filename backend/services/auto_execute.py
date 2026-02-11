@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from services.ai_analyzer import AISignalAnalyzer, SignalAnalysis, SignalQuality, get_ai_analyzer
 from services.trading_engine import TradingEngine
 
-logger = logging.getLogger(__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
