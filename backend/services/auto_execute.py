@@ -149,56 +149,146 @@ class AutoExecuteEngine:
         
         # Execute the trade
         try:
-            from models.signals import Signal
-            
-            # Convert dict to Signal object if needed
-            if not isinstance(signal, Signal):
-                signal_obj = Signal(
-                    id=signal.get('id'),
-                    source=signal.get('source', 'auto'),
-                    asset=signal.get('asset'),
-                    action=signal.get('action'),
-                    entry=signal.get('entry'),
-                    stop_loss=signal.get('stop_loss'),
-                    take_profits=signal.get('take_profits', []),
-                    leverage=signal.get('leverage', 1),
-                    confidence=signal.get('confidence', 0.5)
-                )
+            # Check if we should use Binance Testnet
+            if self.config.use_binance:
+                # Execute on Binance Testnet
+                result = await self._execute_on_binance(signal, ai_analysis)
             else:
-                signal_obj = signal
+                # Paper trading fallback
+                result = await self._execute_paper_trade(signal, position_size, ai_analysis)
             
-            # Execute trade
-            trade = self.trading_engine.execute_signal(signal_obj, position_size)
-            
-            if trade:
+            if result.get('executed'):
                 self.daily_trades += 1
-                result["executed"] = True
-                result["trade"] = trade.to_dict()
-                result["reason"] = "Erfolgreich ausgeführt"
-                
-                # Send notification
-                await self._notify(
-                    f"✅ Auto-Trade ausgeführt!\n\n"
-                    f"📊 {trade.symbol} {trade.side.value.upper()}\n"
-                    f"💰 Entry: ${trade.entry_price:,.2f}\n"
-                    f"📏 Size: {trade.quantity:.6f}\n"
-                    f"🛑 SL: ${trade.stop_loss:,.2f}\n"
-                    f"🎯 TP: {[f'${tp:,.2f}' for tp in trade.take_profits]}\n"
-                    f"⚡ Leverage: {trade.leverage}x\n\n"
-                    f"🤖 AI Score: {ai_analysis.score:.0f}/100" if ai_analysis else ""
-                )
-                
-                logger.info(f"Auto-executed trade: {trade.symbol} {trade.side.value}")
-            else:
-                result["reason"] = "Trade von Risk Manager abgelehnt"
-                await self._notify(
-                    f"⚠️ Trade abgelehnt (Risk Manager):\n"
-                    f"Asset: {signal.get('asset')}"
-                )
                 
         except Exception as e:
             result["reason"] = f"Ausführungsfehler: {e}"
             logger.error(f"Auto-execute error: {e}")
+        
+        return result
+    
+    async def _execute_on_binance(self, signal: Dict, ai_analysis: Optional[SignalAnalysis]) -> Dict:
+        """Execute trade on Binance Testnet"""
+        from services.trading_service import get_trading_service, init_trading_service, TradingMode
+        
+        result = {
+            "signal_id": signal.get('id'),
+            "asset": signal.get('asset'),
+            "action": signal.get('action'),
+            "executed": False,
+            "trade": None,
+            "reason": None,
+            "broker": "binance_testnet"
+        }
+        
+        # Initialize trading service if needed
+        if not self.trading_service:
+            try:
+                self.trading_service = await init_trading_service(TradingMode.BINANCE_TESTNET)
+            except Exception as e:
+                result["reason"] = f"Binance Verbindung fehlgeschlagen: {e}"
+                logger.error(f"Failed to init trading service: {e}")
+                return result
+        
+        # Execute on Binance
+        trade_result = await self.trading_service.execute_signal(
+            signal=signal,
+            ai_analysis={"score": ai_analysis.score if ai_analysis else 0}
+        )
+        
+        if trade_result.success:
+            result["executed"] = True
+            result["trade"] = {
+                "trade_id": trade_result.trade_id,
+                "order_id": trade_result.order_id,
+                "symbol": trade_result.symbol,
+                "side": trade_result.side,
+                "quantity": trade_result.quantity,
+                "entry_price": trade_result.entry_price,
+                "stop_loss_order_id": trade_result.stop_loss_order_id,
+                "take_profit_order_id": trade_result.take_profit_order_id
+            }
+            result["reason"] = "Erfolgreich auf Binance Testnet ausgeführt"
+            
+            # Send notification
+            await self._notify(
+                f"✅ <b>Auto-Trade auf Binance Testnet!</b>\n\n"
+                f"📊 <b>Asset:</b> {trade_result.symbol}\n"
+                f"📈 <b>Side:</b> {trade_result.side.upper()}\n"
+                f"💰 <b>Entry:</b> ${trade_result.entry_price:,.2f}\n"
+                f"📏 <b>Size:</b> {trade_result.quantity:.6f}\n"
+                f"🛑 <b>SL Order:</b> {'✅' if trade_result.stop_loss_order_id else '❌'}\n"
+                f"🎯 <b>TP Order:</b> {'✅' if trade_result.take_profit_order_id else '❌'}\n"
+                f"🤖 <b>AI Score:</b> {ai_analysis.score:.0f}/100" if ai_analysis else ""
+            )
+            
+            logger.info(f"Auto-executed on Binance: {trade_result.symbol} {trade_result.side}")
+        else:
+            result["reason"] = f"Binance Fehler: {trade_result.error}"
+            await self._notify(
+                f"❌ <b>Trade fehlgeschlagen!</b>\n\n"
+                f"Asset: {signal.get('asset')}\n"
+                f"Fehler: {trade_result.error}"
+            )
+        
+        return result
+    
+    async def _execute_paper_trade(self, signal: Dict, position_size: Optional[float], ai_analysis: Optional[SignalAnalysis]) -> Dict:
+        """Execute trade on Paper Trading engine"""
+        from models.signals import Signal
+        
+        result = {
+            "signal_id": signal.get('id'),
+            "asset": signal.get('asset'),
+            "action": signal.get('action'),
+            "executed": False,
+            "trade": None,
+            "reason": None,
+            "broker": "paper"
+        }
+        
+        # Convert dict to Signal object if needed
+        if not isinstance(signal, Signal):
+            signal_obj = Signal(
+                id=signal.get('id'),
+                source=signal.get('source', 'auto'),
+                asset=signal.get('asset'),
+                action=signal.get('action'),
+                entry=signal.get('entry'),
+                stop_loss=signal.get('stop_loss'),
+                take_profits=signal.get('take_profits', []),
+                leverage=signal.get('leverage', 1),
+                confidence=signal.get('confidence', 0.5)
+            )
+        else:
+            signal_obj = signal
+        
+        # Execute trade
+        trade = self.trading_engine.execute_signal(signal_obj, position_size)
+        
+        if trade:
+            result["executed"] = True
+            result["trade"] = trade.to_dict()
+            result["reason"] = "Erfolgreich ausgeführt (Paper Trading)"
+            
+            # Send notification
+            await self._notify(
+                f"✅ Auto-Trade ausgeführt!\n\n"
+                f"📊 {trade.symbol} {trade.side.value.upper()}\n"
+                f"💰 Entry: ${trade.entry_price:,.2f}\n"
+                f"📏 Size: {trade.quantity:.6f}\n"
+                f"🛑 SL: ${trade.stop_loss:,.2f}\n"
+                f"🎯 TP: {[f'${tp:,.2f}' for tp in trade.take_profits]}\n"
+                f"⚡ Leverage: {trade.leverage}x\n\n"
+                f"🤖 AI Score: {ai_analysis.score:.0f}/100" if ai_analysis else ""
+            )
+            
+            logger.info(f"Auto-executed trade: {trade.symbol} {trade.side.value}")
+        else:
+            result["reason"] = "Trade von Risk Manager abgelehnt"
+            await self._notify(
+                f"⚠️ Trade abgelehnt (Risk Manager):\n"
+                f"Asset: {signal.get('asset')}"
+            )
         
         return result
     
