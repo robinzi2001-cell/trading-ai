@@ -31,6 +31,13 @@ from services.ai_analyzer import get_ai_analyzer, analyze_signal as ai_analyze_s
 from services.auto_execute import init_auto_execute_engine, get_auto_execute_engine, AutoExecuteConfig
 from services.notification_service import init_notification_service, get_notification_service
 from services.x_twitter_monitor import analyze_tweet, get_x_monitor, INFLUENTIAL_ACCOUNTS
+from services.twitter_rss_monitor import (
+    init_twitter_rss_monitor, 
+    get_twitter_rss_monitor, 
+    TwitterRSSMonitor,
+    Tweet,
+    RSSSource
+)
 
 # Load environment
 ROOT_DIR = Path(__file__).parent
