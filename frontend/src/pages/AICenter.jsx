@@ -41,7 +41,7 @@ export default function AICenter() {
 
   const fetchData = async () => {
     try {
-      const [statusRes, accountsRes] = await Promise.all([
+      const [statusRes, accountsRes, rssRes] = await Promise.all([
         api.get('/auto-execute/status'),
         api.get('/ai/influential-accounts'),
         api.get('/twitter/rss/status')
