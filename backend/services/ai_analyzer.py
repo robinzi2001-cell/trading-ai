@@ -109,7 +109,7 @@ Antworte IMMER im JSON-Format:
                 api_key=self.api_key,
                 session_id=f"signal_analysis_{datetime.now().timestamp()}",
                 system_message=self.SYSTEM_PROMPT
-            ).with_model("openai", "gpt-5.2")
+            ).with_model("openai", "gpt-4o")
             
             # Build signal description
             signal_text = f"""
@@ -125,30 +125,41 @@ Quelle: {signal.get('source', 'Unknown')}
 Confidence (Parser): {signal.get('confidence', 0)*100:.0f}%
 
 Original Text:
-{signal.get('original_text', 'N/A')[:500]}
+{signal.get('original_text', 'N/A')[:500] if signal.get('original_text') else 'N/A'}
+
+Antworte NUR mit validem JSON, keine anderen Texte!
 """
             
             user_message = UserMessage(text=signal_text)
             response = await chat.send_message(user_message)
             
+            logger.info(f"AI Response: {response[:200] if response else 'None'}...")
+            
             # Parse response
             import json
             try:
                 # Extract JSON from response
-                json_str = response
-                if "```json" in response:
-                    json_str = response.split("```json")[1].split("```")[0]
-                elif "```" in response:
-                    json_str = response.split("```")[1].split("```")[0]
+                json_str = response if response else "{}"
+                if "```json" in json_str:
+                    json_str = json_str.split("```json")[1].split("```")[0]
+                elif "```" in json_str:
+                    json_str = json_str.split("```")[1].split("```")[0]
+                
+                # Try to find JSON object
+                import re
+                json_match = re.search(r'\{[^{}]*\}', json_str, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group()
                 
                 data = json.loads(json_str.strip())
-            except:
+            except Exception as parse_err:
+                logger.warning(f"JSON parse error: {parse_err}, using defaults")
                 # Default response if parsing fails
                 data = {
                     "score": signal.get('confidence', 0.5) * 100,
                     "quality": "moderate",
-                    "should_execute": signal.get('confidence', 0) >= 0.6,
-                    "reasoning": "AI Analyse nicht verfügbar",
+                    "should_execute": signal.get('confidence', 0) >= 0.7,
+                    "reasoning": response[:200] if response else "AI Analyse verfügbar",
                     "risk_assessment": "Standard",
                     "position_size_multiplier": 1.0,
                     "warnings": []
