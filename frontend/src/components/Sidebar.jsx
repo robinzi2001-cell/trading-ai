@@ -6,7 +6,8 @@ import {
   TrendingUp, 
   Wallet, 
   Settings,
-  Activity
+  Activity,
+  Brain
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/signals', icon: Radio, label: 'Signals' },
   { to: '/trades', icon: TrendingUp, label: 'Trades' },
   { to: '/portfolio', icon: Wallet, label: 'Portfolio' },
+  { to: '/ai', icon: Brain, label: 'AI Center' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
