@@ -28,6 +28,7 @@ import { cn } from '../lib/utils';
 export default function AICenter() {
   const [autoExecuteStatus, setAutoExecuteStatus] = useState(null);
   const [influentialAccounts, setInfluentialAccounts] = useState([]);
+  const [twitterRssStatus, setTwitterRssStatus] = useState(null);
   const [tweetText, setTweetText] = useState('');
   const [tweetAuthor, setTweetAuthor] = useState('Donald Trump');
   const [tweetAnalysis, setTweetAnalysis] = useState(null);
