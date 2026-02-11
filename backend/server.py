@@ -1158,6 +1158,38 @@ async def startup():
         except Exception as e:
             logger.warning(f"Channel monitor setup: {e}")
     
+    # Initialize Twitter RSS Monitor
+    async def twitter_callback(tweet, account):
+        """Called when a new tweet is detected"""
+        logger.info(f"New tweet from @{tweet.username}: {tweet.text[:50]}...")
+        
+        # Analyze the tweet
+        try:
+            ai_analysis = await analyze_social_post({
+                "author": tweet.author,
+                "text": tweet.text,
+                "category": account.category,
+                "impact_weight": account.impact_weight
+            })
+            
+            # Send notification if significant
+            if ai_analysis and ai_analysis.impact_score >= 60:
+                notifier = get_notification_service()
+                if notifier:
+                    await notifier.send(
+                        f"🐦 <b>Tweet von @{tweet.username}</b>\n\n"
+                        f"{tweet.text[:200]}...\n\n"
+                        f"📊 Impact Score: {ai_analysis.impact_score}/100\n"
+                        f"💬 Sentiment: {ai_analysis.sentiment}\n"
+                        f"🎯 Assets: {', '.join(ai_analysis.affected_assets[:3])}\n"
+                        f"⚡ Action: {ai_analysis.suggested_action or 'N/A'}"
+                    )
+        except Exception as e:
+            logger.warning(f"Tweet analysis error: {e}")
+    
+    twitter_monitor = await init_twitter_rss_monitor(callback=twitter_callback)
+    logger.info(f"Twitter RSS Monitor initialized ({len(twitter_monitor.accounts)} accounts)")
+    
     logger.info("Trading AI Backend started successfully")
 
 
