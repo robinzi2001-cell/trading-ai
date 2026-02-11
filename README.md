@@ -350,7 +350,7 @@ PUT /api/auto-execute/config?enabled=true&min_ai_score=70
 ### Basis-URL
 
 ```
-Production: https://broker-connect-ai.preview.emergentagent.com/api
+Production: https://signal-trader-ai-4.preview.emergentagent.com/api
 Local: http://localhost:8001/api
 ```
 
@@ -592,7 +592,7 @@ tail -f /var/log/supervisor/backend.err.log
 
 - **Telegram Bot**: @traiding_r2d2_bot
 - **GitHub**: https://github.com/robinzi2001-cell/trading-ai
-- **Dashboard**: https://broker-connect-ai.preview.emergentagent.com
+- **Dashboard**: https://signal-trader-ai-4.preview.emergentagent.com
 
 ---
 
