@@ -1,6 +1,7 @@
 """
 Auto-Execute Engine for Trading AI
 Automatically executes trading signals based on AI analysis and risk management.
+Supports both Paper Trading and Binance Testnet execution.
 """
 import asyncio
 import os
@@ -12,7 +13,7 @@ from dataclasses import dataclass
 from services.ai_analyzer import AISignalAnalyzer, SignalAnalysis, SignalQuality, get_ai_analyzer
 from services.trading_engine import TradingEngine
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__)
 
 
 @dataclass
