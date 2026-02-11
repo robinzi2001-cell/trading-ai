@@ -883,6 +883,117 @@ async def get_influential_accounts():
     }
 
 
+# ============ TWITTER RSS MONITOR ENDPOINTS ============
+
+@api_router.get("/twitter/rss/status")
+async def get_twitter_rss_status():
+    """Get Twitter RSS monitor status"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        return {
+            "configured": False,
+            "running": False,
+            "accounts": [],
+            "working_instance": None
+        }
+    
+    return {
+        "configured": True,
+        "running": monitor.running,
+        "accounts": monitor.get_accounts(),
+        "working_instance": monitor.working_nitter,
+        "seen_tweets_count": len(monitor.seen_tweets)
+    }
+
+
+@api_router.post("/twitter/rss/check")
+async def check_twitter_rss():
+    """Manually check all RSS feeds for new tweets"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        raise HTTPException(status_code=400, detail="Twitter RSS monitor not initialized")
+    
+    tweets = await monitor.check_all_accounts()
+    
+    return {
+        "success": True,
+        "tweets_found": len(tweets),
+        "tweets": [
+            {
+                "id": t.id,
+                "author": t.author,
+                "username": t.username,
+                "text": t.text[:200],
+                "timestamp": t.timestamp.isoformat(),
+                "url": t.url
+            }
+            for t in tweets[:10]  # Return max 10 tweets
+        ]
+    }
+
+
+@api_router.post("/twitter/rss/add-account")
+async def add_twitter_account(
+    name: str,
+    username: str,
+    category: str = "crypto",
+    impact_weight: float = 1.0
+):
+    """Add a new Twitter account to monitor via RSS"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        raise HTTPException(status_code=400, detail="Twitter RSS monitor not initialized")
+    
+    monitor.add_account(name, username, category, impact_weight)
+    
+    return {
+        "success": True,
+        "message": f"Added @{username} to monitoring",
+        "accounts": monitor.get_accounts()
+    }
+
+
+@api_router.delete("/twitter/rss/remove-account/{username}")
+async def remove_twitter_account(username: str):
+    """Remove a Twitter account from monitoring"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        raise HTTPException(status_code=400, detail="Twitter RSS monitor not initialized")
+    
+    monitor.remove_account(username)
+    
+    return {
+        "success": True,
+        "message": f"Removed @{username} from monitoring",
+        "accounts": monitor.get_accounts()
+    }
+
+
+@api_router.post("/twitter/rss/start")
+async def start_twitter_monitoring():
+    """Start Twitter RSS monitoring"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        raise HTTPException(status_code=400, detail="Twitter RSS monitor not initialized")
+    
+    if not monitor.running:
+        asyncio.create_task(monitor.start_monitoring())
+        return {"success": True, "message": "Twitter RSS monitoring started"}
+    
+    return {"success": False, "message": "Already running"}
+
+
+@api_router.post("/twitter/rss/stop")
+async def stop_twitter_monitoring():
+    """Stop Twitter RSS monitoring"""
+    monitor = get_twitter_rss_monitor()
+    if not monitor:
+        raise HTTPException(status_code=400, detail="Twitter RSS monitor not initialized")
+    
+    await monitor.stop()
+    return {"success": True, "message": "Twitter RSS monitoring stopped"}
+
+
 # ============ NOTIFICATION ENDPOINTS ============
 
 @api_router.post("/notifications/subscribe")
