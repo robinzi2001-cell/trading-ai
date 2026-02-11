@@ -11,6 +11,7 @@ import Signals from "./pages/Signals";
 import Trades from "./pages/Trades";
 import Portfolio from "./pages/Portfolio";
 import Settings from "./pages/Settings";
+import AICenter from "./pages/AICenter";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
