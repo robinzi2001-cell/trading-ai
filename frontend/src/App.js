@@ -210,6 +210,10 @@ function App() {
                   />
                 } 
               />
+              <Route 
+                path="/ai" 
+                element={<AICenter />} 
+              />
             </Routes>
           </main>
         </div>
