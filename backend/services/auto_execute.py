@@ -309,7 +309,9 @@ class AutoExecuteEngine:
             "min_confidence": self.config.min_confidence,
             "min_ai_score": self.config.min_ai_score,
             "require_ai_approval": self.config.require_ai_approval,
-            "ai_analyzer_available": self.ai_analyzer is not None
+            "ai_analyzer_available": self.ai_analyzer is not None,
+            "use_binance": self.config.use_binance,
+            "broker": "binance_testnet" if self.config.use_binance else "paper"
         }
 
 
