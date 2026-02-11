@@ -389,16 +389,45 @@ export default function AICenter() {
           </CardContent>
         </Card>
 
-        {/* Influential Accounts */}
+        {/* Influential Accounts + RSS Status */}
         <Card className="bg-zinc-900/50 border-white/5 lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm text-zinc-400 uppercase tracking-wide">
-              Überwachte Accounts
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm text-zinc-400 uppercase tracking-wide">
+                Twitter/X Überwachung
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {twitterRssStatus?.working_instance ? (
+                  <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/20 text-emerald-400">
+                    RSS AKTIV
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-1 rounded bg-yellow-500/20 text-yellow-400">
+                    MANUELL
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={checkTwitterRss}
+                  disabled={analyzing}
+                  className="h-7 text-xs"
+                >
+                  <RefreshCw className={cn("w-3 h-3 mr-1", analyzing && "animate-spin")} />
+                  Prüfen
+                </Button>
+              </div>
+            </div>
+            <CardDescription className="text-xs text-zinc-500">
+              {twitterRssStatus?.working_instance 
+                ? `Automatisch via ${twitterRssStatus.working_instance}`
+                : 'Füge Tweets manuell oben ein zur Analyse'
+              }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-              {influentialAccounts.map(acc => (
+              {(twitterRssStatus?.accounts || influentialAccounts).map(acc => (
                 <div 
                   key={acc.username}
                   className="p-3 rounded-lg bg-zinc-800/50 border border-white/5"
