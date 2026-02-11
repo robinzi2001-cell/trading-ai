@@ -25,6 +25,7 @@ class AutoExecuteConfig:
     require_ai_approval: bool = True  # Require AI to approve
     max_daily_trades: int = 10
     allowed_sources: list = None  # None = all sources
+    use_binance: bool = True  # Execute on Binance Testnet instead of Paper
     
     # Risk adjustments
     reduce_size_below_score: float = 70.0  # Reduce position size if score below this
