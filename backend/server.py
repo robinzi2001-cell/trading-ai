@@ -722,6 +722,193 @@ async def get_channel_monitor_status():
         }
 
 
+# ============ AUTO-EXECUTE ENDPOINTS ============
+
+@api_router.get("/auto-execute/status")
+async def get_auto_execute_status():
+    """Get auto-execute status"""
+    engine = get_auto_execute_engine()
+    if not engine:
+        return {"enabled": False, "initialized": False}
+    return engine.get_status()
+
+
+@api_router.put("/auto-execute/config")
+async def update_auto_execute_config(
+    enabled: bool = None,
+    min_confidence: float = None,
+    min_ai_score: float = None,
+    require_ai_approval: bool = None,
+    max_daily_trades: int = None
+):
+    """Update auto-execute configuration"""
+    engine = get_auto_execute_engine()
+    if not engine:
+        raise HTTPException(status_code=400, detail="Auto-execute not initialized")
+    
+    updates = {}
+    if enabled is not None:
+        updates['enabled'] = enabled
+    if min_confidence is not None:
+        updates['min_confidence'] = min_confidence
+    if min_ai_score is not None:
+        updates['min_ai_score'] = min_ai_score
+    if require_ai_approval is not None:
+        updates['require_ai_approval'] = require_ai_approval
+    if max_daily_trades is not None:
+        updates['max_daily_trades'] = max_daily_trades
+    
+    if updates:
+        engine.update_config(**updates)
+    
+    return engine.get_status()
+
+
+# ============ AI ANALYSIS ENDPOINTS ============
+
+@api_router.post("/ai/analyze-signal")
+async def analyze_signal_endpoint(signal_id: str):
+    """Analyze a signal using AI"""
+    signal = await db.signals.find_one({"id": signal_id}, {"_id": 0})
+    if not signal:
+        raise HTTPException(status_code=404, detail="Signal not found")
+    
+    analyzer = get_ai_analyzer()
+    if not analyzer:
+        raise HTTPException(status_code=400, detail="AI analyzer not available")
+    
+    analysis = await analyzer.analyze_signal(signal)
+    
+    # Send notification
+    notifier = get_notification_service()
+    if notifier:
+        await notifier.send_ai_analysis(signal, {
+            "score": analysis.score,
+            "quality": analysis.quality.value,
+            "should_execute": analysis.should_execute,
+            "reasoning": analysis.reasoning,
+            "warnings": analysis.warnings
+        })
+    
+    return {
+        "signal_id": signal_id,
+        "quality": analysis.quality.value,
+        "score": analysis.score,
+        "should_execute": analysis.should_execute,
+        "reasoning": analysis.reasoning,
+        "risk_assessment": analysis.risk_assessment,
+        "suggested_position_size": analysis.suggested_position_size,
+        "warnings": analysis.warnings
+    }
+
+
+# ============ X/TWITTER ENDPOINTS ============
+
+class TweetInput(PydanticBaseModel):
+    author: str
+    text: str
+
+@api_router.post("/ai/analyze-tweet")
+async def analyze_tweet_endpoint(input: TweetInput):
+    """Analyze a tweet/X post for market impact"""
+    # First, get preliminary analysis from X monitor
+    monitor_result = await analyze_tweet(input.author, input.text)
+    
+    if not monitor_result:
+        return {"error": "Could not analyze tweet", "author": input.author}
+    
+    # Then, get detailed AI analysis
+    analyzer = get_ai_analyzer()
+    if analyzer:
+        ai_analysis = await analyze_social_post(monitor_result)
+        
+        # Send notification if significant impact
+        if ai_analysis.trading_opportunity:
+            notifier = get_notification_service()
+            if notifier:
+                await notifier.send_social_alert(monitor_result, {
+                    "impact_score": ai_analysis.impact_score,
+                    "sentiment": ai_analysis.sentiment,
+                    "affected_assets": ai_analysis.affected_assets,
+                    "suggested_action": ai_analysis.suggested_action,
+                    "urgency": ai_analysis.urgency
+                })
+        
+        return {
+            "author": monitor_result.get("author"),
+            "preliminary_impact": monitor_result.get("preliminary_impact"),
+            "ai_analysis": {
+                "impact_score": ai_analysis.impact_score,
+                "affected_assets": ai_analysis.affected_assets,
+                "sentiment": ai_analysis.sentiment,
+                "urgency": ai_analysis.urgency,
+                "trading_opportunity": ai_analysis.trading_opportunity,
+                "suggested_action": ai_analysis.suggested_action,
+                "reasoning": ai_analysis.reasoning,
+                "confidence": ai_analysis.confidence
+            }
+        }
+    
+    return {
+        "author": monitor_result.get("author"),
+        "preliminary_impact": monitor_result.get("preliminary_impact"),
+        "ai_analysis": None
+    }
+
+
+@api_router.get("/ai/influential-accounts")
+async def get_influential_accounts():
+    """Get list of monitored influential accounts"""
+    return {
+        "accounts": [
+            {
+                "username": acc.username,
+                "name": acc.name,
+                "category": acc.category,
+                "impact_weight": acc.impact_weight,
+                "keywords": acc.keywords
+            }
+            for acc in INFLUENTIAL_ACCOUNTS
+        ]
+    }
+
+
+# ============ NOTIFICATION ENDPOINTS ============
+
+@api_router.post("/notifications/subscribe")
+async def subscribe_notifications(chat_id: int):
+    """Subscribe a chat to notifications"""
+    notifier = get_notification_service()
+    if notifier:
+        notifier.add_chat(chat_id)
+        return {"success": True, "message": f"Chat {chat_id} subscribed"}
+    return {"success": False, "message": "Notification service not available"}
+
+
+@api_router.post("/notifications/test")
+async def test_notification(chat_id: int):
+    """Send a test notification"""
+    notifier = get_notification_service()
+    if not notifier:
+        raise HTTPException(status_code=400, detail="Notification service not available")
+    
+    # Temporarily add chat if not subscribed
+    original_chats = notifier.chat_ids.copy()
+    if chat_id not in notifier.chat_ids:
+        notifier.add_chat(chat_id)
+    
+    await notifier.send(
+        "🧪 <b>Test Notification</b>\n\n"
+        "Trading AI Benachrichtigungen funktionieren!\n"
+        f"Chat ID: {chat_id}"
+    )
+    
+    # Restore original chats
+    notifier.chat_ids = original_chats
+    
+    return {"success": True, "message": "Test notification sent"}
+
+
 # Include router in app
 app.include_router(api_router)
 
