@@ -267,17 +267,18 @@ export default function AICenter() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="text-sm text-zinc-400">Autor</Label>
-              <select
-                value={tweetAuthor}
-                onChange={(e) => setTweetAuthor(e.target.value)}
-                className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-white"
-              >
-                {influentialAccounts.map(acc => (
-                  <option key={acc.username} value={acc.name}>
-                    {acc.name} (@{acc.username})
-                  </option>
-                ))}
-              </select>
+              <Select value={tweetAuthor} onValueChange={setTweetAuthor}>
+                <SelectTrigger className="w-full bg-zinc-800 border-white/10">
+                  <SelectValue placeholder="Autor auswählen" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-white/10">
+                  {influentialAccounts.map(acc => (
+                    <SelectItem key={acc.username} value={acc.name} className="text-white hover:bg-zinc-800">
+                      {acc.name} (@{acc.username})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
