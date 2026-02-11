@@ -1211,5 +1211,10 @@ async def shutdown():
     if channel_monitor_task:
         channel_monitor_task.cancel()
     
+    # Stop Twitter RSS monitor
+    twitter_monitor = get_twitter_rss_monitor()
+    if twitter_monitor:
+        await twitter_monitor.stop()
+    
     client.close()
     logger.info("Trading AI Backend shutdown complete")
