@@ -206,7 +206,7 @@ Antworte NUR mit validem JSON, keine anderen Texte!
                 api_key=self.api_key,
                 session_id=f"social_analysis_{datetime.now().timestamp()}",
                 system_message=self.SOCIAL_MEDIA_PROMPT
-            ).with_model("openai", "gpt-5.2")
+            ).with_model("openai", "gpt-4o")
             
             post_text = f"""
 Analysiere diesen Social Media Post:
