@@ -739,7 +739,8 @@ async def update_auto_execute_config(
     min_confidence: float = None,
     min_ai_score: float = None,
     require_ai_approval: bool = None,
-    max_daily_trades: int = None
+    max_daily_trades: int = None,
+    use_binance: bool = None
 ):
     """Update auto-execute configuration"""
     engine = get_auto_execute_engine()
@@ -757,6 +758,8 @@ async def update_auto_execute_config(
         updates['require_ai_approval'] = require_ai_approval
     if max_daily_trades is not None:
         updates['max_daily_trades'] = max_daily_trades
+    if use_binance is not None:
+        updates['use_binance'] = use_binance
     
     if updates:
         engine.update_config(**updates)
