@@ -1011,20 +1011,21 @@ async def startup():
     notifier = init_notification_service(bot)
     logger.info("Notification service initialized")
     
-    # Initialize Auto-Execute Engine
+    # Initialize Auto-Execute Engine with Binance Testnet support
     auto_config = AutoExecuteConfig(
-        enabled=False,  # Disabled by default, enable via API
+        enabled=True,  # Enabled by default for automatic trading
         min_confidence=0.6,
         min_ai_score=60,
         require_ai_approval=True,
-        max_daily_trades=10
+        max_daily_trades=10,
+        use_binance=True  # Use Binance Testnet for real execution
     )
     init_auto_execute_engine(
         trading_engine=trading_engine,
         config=auto_config,
         notification_callback=notification_callback
     )
-    logger.info("Auto-execute engine initialized (disabled)")
+    logger.info("Auto-execute engine initialized (Binance Testnet mode)")
     
     # Initialize Channel Monitor (Evening Trader, Fat Pig Signals)
     monitor = await init_channel_monitor(telegram_signal_callback)
