@@ -124,42 +124,90 @@ class BinanceBroker:
     
     async def get_account_info(self) -> dict:
         """Get account information"""
-        return await self._request('GET', '/fapi/v2/account', signed=True)
+        if self.config.is_futures:
+            return await self._request('GET', '/fapi/v2/account', signed=True)
+        else:
+            # Spot account
+            return await self._request('GET', '/api/v3/account', signed=True)
     
     async def get_balance(self) -> dict:
         """Get account balance"""
         account = await self.get_account_info()
         
-        usdt_balance = next(
-            (a for a in account.get('assets', []) if a['asset'] == 'USDT'),
-            {'walletBalance': '0', 'availableBalance': '0'}
-        )
-        
-        return {
-            'total': float(usdt_balance['walletBalance']),
-            'available': float(usdt_balance['availableBalance']),
-            'unrealized_pnl': float(account.get('totalUnrealizedProfit', 0)),
-            'margin_balance': float(account.get('totalMarginBalance', 0))
-        }
+        if self.config.is_futures:
+            usdt_balance = next(
+                (a for a in account.get('assets', []) if a['asset'] == 'USDT'),
+                {'walletBalance': '0', 'availableBalance': '0'}
+            )
+            
+            return {
+                'total': float(usdt_balance['walletBalance']),
+                'available': float(usdt_balance['availableBalance']),
+                'unrealized_pnl': float(account.get('totalUnrealizedProfit', 0)),
+                'margin_balance': float(account.get('totalMarginBalance', 0))
+            }
+        else:
+            # Spot account - look for USDT balance
+            usdt_balance = next(
+                (b for b in account.get('balances', []) if b['asset'] == 'USDT'),
+                {'free': '0', 'locked': '0'}
+            )
+            
+            total = float(usdt_balance['free']) + float(usdt_balance['locked'])
+            
+            return {
+                'total': total,
+                'available': float(usdt_balance['free']),
+                'locked': float(usdt_balance['locked']),
+                'unrealized_pnl': 0,
+                'margin_balance': total
+            }
     
     async def get_positions(self) -> List[dict]:
-        """Get open positions"""
-        account = await self.get_account_info()
-        positions = []
-        
-        for pos in account.get('positions', []):
-            amt = float(pos['positionAmt'])
-            if amt != 0:
-                positions.append({
-                    'symbol': pos['symbol'],
-                    'side': 'long' if amt > 0 else 'short',
-                    'quantity': abs(amt),
-                    'entry_price': float(pos['entryPrice']),
-                    'mark_price': float(pos.get('markPrice', 0)),
-                    'unrealized_pnl': float(pos['unrealizedProfit']),
-                    'leverage': int(pos.get('leverage', 1)),
-                    'margin_type': pos.get('marginType', 'cross')
-                })
+        """Get open positions (Spot: returns open orders as pseudo-positions)"""
+        if self.config.is_futures:
+            account = await self.get_account_info()
+            positions = []
+            
+            for pos in account.get('positions', []):
+                amt = float(pos['positionAmt'])
+                if amt != 0:
+                    positions.append({
+                        'symbol': pos['symbol'],
+                        'side': 'long' if amt > 0 else 'short',
+                        'quantity': abs(amt),
+                        'entry_price': float(pos['entryPrice']),
+                        'mark_price': float(pos.get('markPrice', 0)),
+                        'unrealized_pnl': float(pos['unrealizedProfit']),
+                        'leverage': int(pos.get('leverage', 1)),
+                        'margin_type': pos.get('marginType', 'cross')
+                    })
+            
+            return positions
+        else:
+            # Spot - get balances with non-zero amounts
+            account = await self.get_account_info()
+            positions = []
+            
+            for balance in account.get('balances', []):
+                free = float(balance['free'])
+                locked = float(balance['locked'])
+                total = free + locked
+                
+                # Skip stablecoins and zero balances
+                if total > 0 and balance['asset'] not in ['USDT', 'BUSD', 'USDC', 'USD']:
+                    positions.append({
+                        'symbol': f"{balance['asset']}USDT",
+                        'side': 'long',  # Spot only has long positions
+                        'quantity': total,
+                        'entry_price': 0,  # Not available in spot
+                        'mark_price': 0,
+                        'unrealized_pnl': 0,
+                        'leverage': 1,
+                        'margin_type': 'spot'
+                    })
+            
+            return positions
         
         return positions
     
