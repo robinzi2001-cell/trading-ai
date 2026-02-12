@@ -228,10 +228,12 @@ class BinanceBroker:
             'quantity': quantity
         }
         
-        if reduce_only:
+        if reduce_only and self.config.is_futures:
             params['reduceOnly'] = 'true'
         
-        result = await self._request('POST', '/fapi/v1/order', params, signed=True)
+        # Different endpoints for Spot vs Futures
+        endpoint = '/fapi/v1/order' if self.config.is_futures else '/api/v3/order'
+        result = await self._request('POST', endpoint, params, signed=True)
         
         logger.info(f"Market order placed: {symbol} {side} {quantity}")
         return self._format_order_result(result)
@@ -254,7 +256,8 @@ class BinanceBroker:
             'timeInForce': time_in_force
         }
         
-        result = await self._request('POST', '/fapi/v1/order', params, signed=True)
+        endpoint = '/fapi/v1/order' if self.config.is_futures else '/api/v3/order'
+        result = await self._request('POST', endpoint, params, signed=True)
         
         logger.info(f"Limit order placed: {symbol} {side} {quantity} @ {price}")
         return self._format_order_result(result)
