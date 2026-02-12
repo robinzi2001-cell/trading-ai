@@ -1,6 +1,6 @@
 """
 Binance Broker Integration for Trading AI
-Supports both Testnet and Live trading.
+Supports Spot Testnet trading (Futures not available in all regions).
 """
 import asyncio
 import os
@@ -18,8 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class BinanceNetwork(str, Enum):
-    TESTNET = "testnet"
-    LIVE = "live"
+    SPOT_TESTNET = "spot_testnet"
+    SPOT_LIVE = "spot_live"
+    FUTURES_TESTNET = "futures_testnet"  # Not available in all regions
+    FUTURES_LIVE = "futures_live"
 
 
 @dataclass
@@ -27,19 +29,25 @@ class BinanceConfig:
     """Binance API configuration"""
     api_key: str
     api_secret: str
-    network: BinanceNetwork = BinanceNetwork.TESTNET
+    network: BinanceNetwork = BinanceNetwork.SPOT_TESTNET
     
     @property
     def base_url(self) -> str:
-        if self.network == BinanceNetwork.TESTNET:
-            return "https://testnet.binancefuture.com"
-        return "https://fapi.binance.com"
+        urls = {
+            BinanceNetwork.SPOT_TESTNET: "https://testnet.binance.vision",
+            BinanceNetwork.SPOT_LIVE: "https://api.binance.com",
+            BinanceNetwork.FUTURES_TESTNET: "https://testnet.binancefuture.com",
+            BinanceNetwork.FUTURES_LIVE: "https://fapi.binance.com",
+        }
+        return urls.get(self.network, "https://testnet.binance.vision")
     
     @property
-    def ws_url(self) -> str:
-        if self.network == BinanceNetwork.TESTNET:
-            return "wss://stream.binancefuture.com"
-        return "wss://fstream.binance.com"
+    def is_futures(self) -> bool:
+        return "futures" in self.network.value
+    
+    @property
+    def is_testnet(self) -> bool:
+        return "testnet" in self.network.value
 
 
 class BinanceBroker:
