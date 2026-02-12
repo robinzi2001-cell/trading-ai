@@ -270,16 +270,30 @@ class BinanceBroker:
         stop_price: float
     ) -> dict:
         """Place stop loss order"""
-        params = {
-            'symbol': symbol.replace('/', ''),
-            'side': side.upper(),
-            'type': 'STOP_MARKET',
-            'quantity': quantity,
-            'stopPrice': stop_price,
-            'closePosition': 'false'
-        }
+        if self.config.is_futures:
+            params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': 'STOP_MARKET',
+                'quantity': quantity,
+                'stopPrice': stop_price,
+                'closePosition': 'false'
+            }
+            endpoint = '/fapi/v1/order'
+        else:
+            # Spot uses STOP_LOSS_LIMIT
+            params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': 'STOP_LOSS_LIMIT',
+                'quantity': quantity,
+                'stopPrice': stop_price,
+                'price': stop_price * 0.99 if side.upper() == 'SELL' else stop_price * 1.01,  # Slightly worse price
+                'timeInForce': 'GTC'
+            }
+            endpoint = '/api/v3/order'
         
-        result = await self._request('POST', '/fapi/v1/order', params, signed=True)
+        result = await self._request('POST', endpoint, params, signed=True)
         
         logger.info(f"Stop loss placed: {symbol} {side} @ {stop_price}")
         return self._format_order_result(result)
@@ -292,16 +306,30 @@ class BinanceBroker:
         take_profit_price: float
     ) -> dict:
         """Place take profit order"""
-        params = {
-            'symbol': symbol.replace('/', ''),
-            'side': side.upper(),
-            'type': 'TAKE_PROFIT_MARKET',
-            'quantity': quantity,
-            'stopPrice': take_profit_price,
-            'closePosition': 'false'
-        }
+        if self.config.is_futures:
+            params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': 'TAKE_PROFIT_MARKET',
+                'quantity': quantity,
+                'stopPrice': take_profit_price,
+                'closePosition': 'false'
+            }
+            endpoint = '/fapi/v1/order'
+        else:
+            # Spot uses TAKE_PROFIT_LIMIT
+            params = {
+                'symbol': symbol.replace('/', ''),
+                'side': side.upper(),
+                'type': 'TAKE_PROFIT_LIMIT',
+                'quantity': quantity,
+                'stopPrice': take_profit_price,
+                'price': take_profit_price,
+                'timeInForce': 'GTC'
+            }
+            endpoint = '/api/v3/order'
         
-        result = await self._request('POST', '/fapi/v1/order', params, signed=True)
+        result = await self._request('POST', endpoint, params, signed=True)
         
         logger.info(f"Take profit placed: {symbol} {side} @ {take_profit_price}")
         return self._format_order_result(result)
@@ -313,7 +341,8 @@ class BinanceBroker:
             'orderId': order_id
         }
         
-        result = await self._request('DELETE', '/fapi/v1/order', params, signed=True)
+        endpoint = '/fapi/v1/order' if self.config.is_futures else '/api/v3/order'
+        result = await self._request('DELETE', endpoint, params, signed=True)
         
         logger.info(f"Order cancelled: {order_id}")
         return result
@@ -322,13 +351,14 @@ class BinanceBroker:
         """Cancel all open orders for a symbol"""
         params = {'symbol': symbol.replace('/', '')}
         
-        result = await self._request('DELETE', '/fapi/v1/allOpenOrders', params, signed=True)
+        endpoint = '/fapi/v1/allOpenOrders' if self.config.is_futures else '/api/v3/openOrders'
+        result = await self._request('DELETE', endpoint, params, signed=True)
         
         logger.info(f"All orders cancelled for {symbol}")
         return result
     
     async def close_position(self, symbol: str) -> Optional[dict]:
-        """Close entire position for a symbol"""
+        """Close entire position for a symbol (Futures) or sell all (Spot)"""
         positions = await self.get_positions()
         position = next((p for p in positions if p['symbol'] == symbol.replace('/', '')), None)
         
