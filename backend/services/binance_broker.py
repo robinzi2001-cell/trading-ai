@@ -384,13 +384,15 @@ class BinanceBroker:
     async def get_price(self, symbol: str) -> float:
         """Get current price for a symbol"""
         params = {'symbol': symbol.replace('/', '')}
-        result = await self._request('GET', '/fapi/v1/ticker/price', params)
+        endpoint = '/fapi/v1/ticker/price' if self.config.is_futures else '/api/v3/ticker/price'
+        result = await self._request('GET', endpoint, params)
         return float(result['price'])
     
     async def get_ticker(self, symbol: str) -> dict:
         """Get 24h ticker for a symbol"""
         params = {'symbol': symbol.replace('/', '')}
-        result = await self._request('GET', '/fapi/v1/ticker/24hr', params)
+        endpoint = '/fapi/v1/ticker/24hr' if self.config.is_futures else '/api/v3/ticker/24hr'
+        result = await self._request('GET', endpoint, params)
         
         return {
             'symbol': symbol,
@@ -407,7 +409,8 @@ class BinanceBroker:
             'symbol': symbol.replace('/', ''),
             'limit': limit
         }
-        result = await self._request('GET', '/fapi/v1/depth', params)
+        endpoint = '/fapi/v1/depth' if self.config.is_futures else '/api/v3/depth'
+        result = await self._request('GET', endpoint, params)
         
         return {
             'bids': [[float(p), float(q)] for p, q in result['bids']],
@@ -417,7 +420,11 @@ class BinanceBroker:
     # ==================== Settings ====================
     
     async def set_leverage(self, symbol: str, leverage: int) -> dict:
-        """Set leverage for a symbol"""
+        """Set leverage for a symbol (Futures only, ignored for Spot)"""
+        if not self.config.is_futures:
+            logger.info(f"Leverage not supported for Spot trading (ignoring)")
+            return {"leverage": 1, "symbol": symbol}
+        
         params = {
             'symbol': symbol.replace('/', ''),
             'leverage': leverage
