@@ -486,13 +486,21 @@ class BinanceAPIError(Exception):
 def create_binance_broker(
     api_key: str = None,
     api_secret: str = None,
-    testnet: bool = True
+    testnet: bool = True,
+    use_futures: bool = False  # Default to Spot (Futures not available in all regions)
 ) -> BinanceBroker:
     """Create Binance broker instance"""
+    
+    # Determine network
+    if use_futures:
+        network = BinanceNetwork.FUTURES_TESTNET if testnet else BinanceNetwork.FUTURES_LIVE
+    else:
+        network = BinanceNetwork.SPOT_TESTNET if testnet else BinanceNetwork.SPOT_LIVE
+    
     config = BinanceConfig(
         api_key=api_key or os.environ.get('BINANCE_API_KEY', ''),
         api_secret=api_secret or os.environ.get('BINANCE_SECRET', ''),
-        network=BinanceNetwork.TESTNET if testnet else BinanceNetwork.LIVE
+        network=network
     )
     
     return BinanceBroker(config)
