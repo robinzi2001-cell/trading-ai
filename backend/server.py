@@ -24,7 +24,7 @@ from services.signal_parser import SignalParser
 from services.risk_manager import RiskManager
 from services.trading_engine import TradingEngine
 from services.telegram_listener import TelegramSignalParser, KNOWN_CHANNELS
-from services.binance_broker import create_binance_broker, BinanceAPIError
+from services.alpaca_broker import create_alpaca_broker, AlpacaAPIError, AlpacaBroker
 from services.telegram_bot import init_telegram_bot, get_telegram_bot
 from services.telegram_channel_monitor import init_channel_monitor, get_channel_monitor
 from services.ai_analyzer import get_ai_analyzer, analyze_signal as ai_analyze_signal, analyze_social_post
