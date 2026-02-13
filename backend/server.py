@@ -310,12 +310,29 @@ async def execute_trade(input: TradeCreate):
 
 @api_router.post("/trades/close", response_model=dict)
 async def close_trade(input: TradeClose):
-    """Close an open trade"""
+    """Close an open trade - closes on both Alpaca and paper trading"""
     try:
         exit_reason = ExitReason(input.exit_reason)
     except ValueError:
         exit_reason = ExitReason.MANUAL
     
+    # Get the trade to find the symbol
+    trade = trading_engine.trades.get(input.trade_id)
+    
+    if trade:
+        # Convert symbol for Alpaca
+        symbol = trade.symbol.replace('/', '').replace('USDT', 'USD')
+        
+        # Try to close on Alpaca
+        try:
+            broker = create_alpaca_broker(paper=True)
+            alpaca_result = await broker.close_position(symbol)
+            await broker.close()
+        except Exception as e:
+            logger.warning(f"Alpaca close failed (may not have position): {e}")
+            alpaca_result = None
+    
+    # Close on paper trading engine
     success = trading_engine.close_trade(input.trade_id, exit_reason)
     
     if not success:
