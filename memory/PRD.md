@@ -105,6 +105,18 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 - Features: Fractional Shares, Bracket Orders, Extended Hours
 - API Endpoints für Orders, Positions, Balance
 
+### 2026-02-13 - Phase 5: End-to-End Auto-Execute
+- Neuer Auto-Execute Service mit Alpaca-Integration
+- Professionelles Money Management:
+  - Risk-basierte Position Sizing (2% pro Trade)
+  - AI Score Scaling (höherer Score = größere Position)
+  - Max. Positionen Limit (5)
+  - Cooldown zwischen Trades
+  - Circuit Breaker bei Fehlern
+- Signal Flow: Telegram/RSS → AI Analyse → Alpaca Order → Notification
+- Dashboard zeigt Alpaca-Positionen mit Live P&L
+- Health Monitoring und Reliability Features
+
 ---
 
 ## Feature Status
