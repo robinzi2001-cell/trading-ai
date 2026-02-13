@@ -426,52 +426,71 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
           </div>
         </TabsContent>
 
-        {/* BINANCE TAB */}
-        <TabsContent value="binance">
+        {/* ALPACA BROKER TAB */}
+        <TabsContent value="broker">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="bg-zinc-900/50 border-white/5">
               <CardHeader>
                 <CardTitle className="font-heading text-lg font-semibold tracking-tight uppercase text-white flex items-center gap-2">
-                  <Wallet className="w-4 h-4 text-yellow-500" />
-                  Binance Futures
+                  <Wallet className="w-4 h-4 text-emerald-500" />
+                  Alpaca Trading
                 </CardTitle>
                 <CardDescription className="text-zinc-500">
-                  Verbinde mit Binance für Live-Trading
+                  Verbinde mit Alpaca für Aktien & Crypto Trading
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-zinc-800/50">
-                  {binanceConfig?.configured ? (
+                  {brokerConfig?.configured ? (
                     <CheckCircle className="w-5 h-5 text-emerald-500" />
                   ) : (
                     <XCircle className="w-5 h-5 text-red-500" />
                   )}
                   <span className="text-sm">
-                    {binanceConfig?.configured ? 'API Credentials konfiguriert' : 'API Credentials fehlen'}
+                    {brokerConfig?.configured ? 'API Credentials konfiguriert' : 'API Credentials fehlen'}
                   </span>
-                  {binanceConfig?.configured && (
+                  {brokerConfig?.configured && (
                     <span className={`ml-auto text-xs px-2 py-0.5 rounded ${
-                      binanceConfig?.testnet ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                      brokerConfig?.paper ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
                     }`}>
-                      {binanceConfig?.testnet ? 'Testnet' : 'LIVE'}
+                      {brokerConfig?.paper ? 'Paper Trading' : 'LIVE'}
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-2 p-4 rounded-lg bg-zinc-800/30 border border-white/5">
-                  <h4 className="text-sm font-medium text-white">Testnet Setup:</h4>
-                  <ol className="text-xs text-zinc-400 space-y-2 list-decimal list-inside">
-                    <li>Gehe zu <a href="https://testnet.binancefuture.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1">
-                      testnet.binancefuture.com <ExternalLink className="w-3 h-3" />
-                    </a></li>
-                    <li>Erstelle einen Account und generiere API Keys</li>
-                    <li>Füge diese zur .env Datei hinzu:
-                      <div className="mt-1 p-2 rounded bg-zinc-900 font-mono text-[10px]">
-                        BINANCE_API_KEY=your_key<br/>
-                        BINANCE_SECRET=your_secret<br/>
-                        BINANCE_TESTNET=true
+                {brokerConfig?.configured && (
+                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <h4 className="text-sm font-medium text-emerald-400 mb-2">Features:</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-zinc-300">
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
+                        <span>Aktien (US Markets)</span>
                       </div>
-                    </li>
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
+                        <span>Crypto 24/7</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
+                        <span>Fractional Shares</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3 text-emerald-500" />
+                        <span>Bracket Orders</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 p-4 rounded-lg bg-zinc-800/30 border border-white/5">
+                  <h4 className="text-sm font-medium text-white">Paper Trading Setup:</h4>
+                  <ol className="text-xs text-zinc-400 space-y-2 list-decimal list-inside">
+                    <li>Gehe zu <a href="https://app.alpaca.markets/paper" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1">
+                      app.alpaca.markets/paper <ExternalLink className="w-3 h-3" />
+                    </a></li>
+                    <li>Erstelle einen Account (kostenlos)</li>
+                    <li>Generiere API Keys unter "Your API Keys"</li>
+                    <li>Keys werden automatisch konfiguriert</li>
                   </ol>
                 </div>
 
@@ -497,8 +516,8 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
                 {[
                   { name: 'MetaTrader 5', status: 'planned' },
                   { name: 'Interactive Brokers', status: 'planned' },
-                  { name: 'Alpaca', status: 'planned' },
                   { name: 'Bybit', status: 'planned' },
+                  { name: 'Binance', status: 'region restricted' },
                 ].map((broker) => (
                   <div key={broker.name} className="p-3 rounded-lg bg-zinc-800/30 border border-white/5 opacity-50">
                     <div className="flex items-center justify-between">
