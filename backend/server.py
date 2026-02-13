@@ -417,15 +417,55 @@ async def get_alpaca_positions():
 
 @api_router.get("/portfolio")
 async def get_portfolio():
-    """Get portfolio overview"""
-    portfolio = trading_engine.get_portfolio()
-    return portfolio.to_dict()
+    """Get combined portfolio overview (Paper + Alpaca)"""
+    # Get paper trading portfolio
+    paper_portfolio = trading_engine.get_portfolio()
+    result = paper_portfolio.to_dict()
+    
+    # Add Alpaca data
+    try:
+        broker = create_alpaca_broker(paper=True)
+        alpaca_balance = await broker.get_balance()
+        alpaca_positions = await broker.get_positions()
+        await broker.close()
+        
+        # Combine data
+        result['alpaca'] = {
+            'equity': alpaca_balance.get('total', 0),
+            'cash': alpaca_balance.get('available', 0),
+            'buying_power': alpaca_balance.get('buying_power', 0),
+            'positions_count': len(alpaca_positions),
+            'positions_value': sum(p.get('market_value', 0) for p in alpaca_positions),
+            'unrealized_pnl': sum(p.get('unrealized_pnl', 0) for p in alpaca_positions)
+        }
+        
+        # Update totals
+        result['total_equity'] = alpaca_balance.get('total', result.get('current_balance', 0))
+        result['alpaca_connected'] = True
+        
+    except Exception as e:
+        logger.warning(f"Could not fetch Alpaca portfolio: {e}")
+        result['alpaca_connected'] = False
+    
+    return result
 
 
 @api_router.get("/portfolio/stats")
 async def get_portfolio_stats():
     """Get detailed portfolio statistics"""
-    return trading_engine.get_statistics()
+    stats = trading_engine.get_statistics()
+    
+    # Add auto-execute stats
+    engine = get_auto_execute_engine()
+    if engine:
+        stats['auto_execute'] = {
+            'enabled': engine.config.enabled,
+            'mode': engine.config.mode.value,
+            'daily_trades': engine.daily_trades,
+            'total_auto_trades': len(engine.trade_history)
+        }
+    
+    return stats
 
 
 # ============ SETTINGS ENDPOINTS ============
