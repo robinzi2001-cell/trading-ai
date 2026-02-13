@@ -364,9 +364,53 @@ async def close_trade(input: TradeClose):
 
 @api_router.get("/positions", response_model=List[dict])
 async def get_positions():
-    """Get all open positions"""
-    positions = trading_engine.get_positions()
-    return [p.to_dict() for p in positions]
+    """Get all open positions (combined from Paper Trading and Alpaca)"""
+    all_positions = []
+    
+    # Get paper trading positions
+    paper_positions = trading_engine.get_positions()
+    for p in paper_positions:
+        pos_dict = p.to_dict()
+        pos_dict['source'] = 'paper'
+        all_positions.append(pos_dict)
+    
+    # Get Alpaca positions
+    try:
+        broker = create_alpaca_broker(paper=True)
+        alpaca_positions = await broker.get_positions()
+        await broker.close()
+        
+        for p in alpaca_positions:
+            # Convert to our format
+            all_positions.append({
+                'id': f"alpaca_{p['symbol']}",
+                'symbol': p['symbol'],
+                'side': p['side'],
+                'quantity': p['quantity'],
+                'entry_price': p['entry_price'],
+                'current_price': p['current_price'],
+                'market_value': p.get('market_value', 0),
+                'unrealized_pnl': p['unrealized_pnl'],
+                'unrealized_pnl_percent': p['unrealized_pnl_percent'],
+                'leverage': 1,
+                'source': 'alpaca'
+            })
+    except Exception as e:
+        logger.warning(f"Could not fetch Alpaca positions: {e}")
+    
+    return all_positions
+
+
+@api_router.get("/positions/alpaca")
+async def get_alpaca_positions():
+    """Get only Alpaca positions"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        positions = await broker.get_positions()
+        await broker.close()
+        return {"positions": positions}
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ============ PORTFOLIO ENDPOINTS ============
