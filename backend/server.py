@@ -561,88 +561,242 @@ async def update_telegram_config(enabled: bool = None, channels: List[str] = Non
 
 # ============ BINANCE INTEGRATION ============
 
-@api_router.get("/binance/config")
-async def get_binance_config():
-    """Get Binance configuration status"""
+# ============ ALPACA BROKER ENDPOINTS ============
+
+@api_router.get("/broker/config")
+async def get_broker_config():
+    """Get broker configuration status"""
     has_credentials = bool(
-        os.environ.get('BINANCE_API_KEY') and 
-        os.environ.get('BINANCE_SECRET')
+        os.environ.get('ALPACA_API_KEY') and 
+        os.environ.get('ALPACA_SECRET_KEY')
     )
     
-    is_testnet = os.environ.get('BINANCE_TESTNET', 'true').lower() == 'true'
+    is_paper = os.environ.get('ALPACA_PAPER', 'true').lower() == 'true'
     
     return {
+        "broker": "alpaca",
         "configured": has_credentials,
-        "testnet": is_testnet,
-        "network": "testnet" if is_testnet else "live",
+        "paper": is_paper,
+        "network": "paper" if is_paper else "live",
+        "features": {
+            "stocks": True,
+            "crypto": True,
+            "fractional_shares": True,
+            "bracket_orders": True,
+            "extended_hours": True
+        },
         "instructions": {
-            "testnet": {
-                "url": "https://testnet.binancefuture.com",
-                "step1": "Create account at testnet.binancefuture.com",
-                "step2": "Generate API keys in account settings",
-                "step3": "Set BINANCE_API_KEY and BINANCE_SECRET in .env"
+            "paper": {
+                "url": "https://app.alpaca.markets/paper",
+                "step1": "Create account at alpaca.markets",
+                "step2": "Go to Paper Trading",
+                "step3": "Generate API keys",
+                "step4": "Set ALPACA_API_KEY and ALPACA_SECRET_KEY in .env"
             },
             "live": {
-                "url": "https://www.binance.com",
-                "warning": "Live trading uses real money! Start with testnet first."
+                "url": "https://app.alpaca.markets",
+                "warning": "Live trading uses real money! Start with paper first."
             }
         }
     }
 
 
-@api_router.get("/binance/balance")
-async def get_binance_balance():
-    """Get Binance account balance"""
-    api_key = os.environ.get('BINANCE_API_KEY')
-    api_secret = os.environ.get('BINANCE_SECRET')
+@api_router.get("/broker/balance")
+async def get_broker_balance():
+    """Get Alpaca account balance"""
+    api_key = os.environ.get('ALPACA_API_KEY')
+    secret_key = os.environ.get('ALPACA_SECRET_KEY')
     
-    if not api_key or not api_secret:
-        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
+    if not api_key or not secret_key:
+        raise HTTPException(status_code=400, detail="Alpaca API credentials not configured")
     
     try:
-        broker = create_binance_broker(api_key, api_secret, testnet=True)
+        broker = create_alpaca_broker(api_key, secret_key, paper=True)
         balance = await broker.get_balance()
         await broker.close()
         return balance
-    except BinanceAPIError as e:
+    except AlpacaAPIError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get balance: {e}")
 
 
-@api_router.get("/binance/price/{symbol}")
-async def get_binance_price(symbol: str):
+@api_router.get("/broker/positions")
+async def get_broker_positions():
+    """Get open positions on Alpaca"""
+    api_key = os.environ.get('ALPACA_API_KEY')
+    secret_key = os.environ.get('ALPACA_SECRET_KEY')
+    
+    if not api_key or not secret_key:
+        raise HTTPException(status_code=400, detail="Alpaca API credentials not configured")
+    
+    try:
+        broker = create_alpaca_broker(api_key, secret_key, paper=True)
+        positions = await broker.get_positions()
+        await broker.close()
+        return {"positions": positions}
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/broker/orders")
+async def get_broker_orders(status: str = "open"):
+    """Get orders by status"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        orders = await broker.get_orders(status)
+        await broker.close()
+        return {"orders": orders}
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/broker/clock")
+async def get_market_clock():
+    """Get market clock (is market open?)"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        clock = await broker.get_clock()
+        await broker.close()
+        return clock
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/broker/price/{symbol}")
+async def get_asset_price(symbol: str):
     """Get current price for a symbol"""
     try:
-        broker = create_binance_broker(testnet=True)
-        price = await broker.get_price(symbol)
-        ticker = await broker.get_ticker(symbol)
+        broker = create_alpaca_broker(paper=True)
+        quote = await broker.get_quote(symbol)
         await broker.close()
-        return {
-            "symbol": symbol,
-            "price": price,
-            "ticker": ticker
-        }
+        return quote
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to get price: {e}")
 
 
-@api_router.get("/binance/positions")
-async def get_binance_positions():
-    """Get open positions on Binance"""
-    api_key = os.environ.get('BINANCE_API_KEY')
-    api_secret = os.environ.get('BINANCE_SECRET')
+@api_router.post("/broker/order")
+async def place_broker_order(
+    symbol: str,
+    side: str,  # buy or sell
+    quantity: float = None,
+    notional: float = None,  # Dollar amount
+    order_type: str = "market",
+    limit_price: float = None,
+    stop_price: float = None,
+    take_profit: float = None,
+    stop_loss: float = None
+):
+    """
+    Place order on Alpaca.
     
-    if not api_key or not api_secret:
-        raise HTTPException(status_code=400, detail="Binance API credentials not configured")
-    
+    For bracket orders (with TP and SL), provide take_profit and stop_loss.
+    """
     try:
-        broker = create_binance_broker(api_key, api_secret, testnet=True)
-        positions = await broker.get_positions()
+        broker = create_alpaca_broker(paper=True)
+        
+        if take_profit and stop_loss and quantity:
+            # Bracket order
+            result = await broker.place_bracket_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                take_profit_price=take_profit,
+                stop_loss_price=stop_loss,
+                limit_price=limit_price
+            )
+        elif order_type == "market":
+            result = await broker.place_market_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                notional=notional
+            )
+        elif order_type == "limit" and limit_price:
+            result = await broker.place_limit_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                limit_price=limit_price
+            )
+        elif order_type == "stop" and stop_price:
+            result = await broker.place_stop_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                stop_price=stop_price
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid order parameters")
+        
         await broker.close()
-        return {"positions": positions}
-    except BinanceAPIError as e:
+        return result
+        
+    except AlpacaAPIError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.delete("/broker/order/{order_id}")
+async def cancel_broker_order(order_id: str):
+    """Cancel an order"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        result = await broker.cancel_order(order_id)
+        await broker.close()
+        return result
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.delete("/broker/position/{symbol}")
+async def close_broker_position(symbol: str):
+    """Close a position"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        result = await broker.close_position(symbol)
+        await broker.close()
+        if result:
+            return result
+        raise HTTPException(status_code=404, detail=f"No position found for {symbol}")
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/broker/asset/{symbol}")
+async def get_asset_info(symbol: str):
+    """Get asset information"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        asset = await broker.get_asset(symbol)
+        await broker.close()
+        return asset
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/broker/search")
+async def search_assets(query: str, asset_class: str = None):
+    """Search for tradable assets"""
+    try:
+        broker = create_alpaca_broker(paper=True)
+        assets = await broker.search_assets(query, asset_class)
+        await broker.close()
+        return {"assets": assets}
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# Legacy endpoints for backwards compatibility
+@api_router.get("/binance/balance")
+async def get_binance_balance_legacy():
+    """Legacy endpoint - redirects to Alpaca"""
+    return await get_broker_balance()
+
+
+@api_router.get("/binance/positions")
+async def get_binance_positions_legacy():
+    """Legacy endpoint - redirects to Alpaca"""
+    return await get_broker_positions()
 
 
 # ============ TELEGRAM BOT ENDPOINTS ============
