@@ -231,49 +231,52 @@ async def execute_trade(input: TradeCreate):
     try:
         broker = create_alpaca_broker(paper=True)
         
-        # Get current price to calculate quantity
+        # Check if asset is tradable on Alpaca
+        try:
+            asset_info = await broker.get_asset(symbol)
+            if not asset_info.get('tradable'):
+                raise HTTPException(status_code=400, detail=f"{symbol} is not tradable on Alpaca")
+        except AlpacaAPIError:
+            # Try without USD suffix for stocks
+            if symbol.endswith('USD'):
+                symbol = symbol[:-3]  # Remove USD
+                try:
+                    asset_info = await broker.get_asset(symbol)
+                except:
+                    raise HTTPException(status_code=400, detail=f"Asset {signal.asset} not found on Alpaca")
+        
+        # Get current price
         try:
             quote = await broker.get_quote(symbol)
-            current_price = quote.get('price', signal.entry)
-        except:
+            current_price = quote.get('price', 0)
+            if current_price == 0:
+                current_price = signal.entry
+        except Exception as e:
+            logger.warning(f"Could not get quote for {symbol}: {e}")
             current_price = signal.entry
         
-        # Calculate quantity based on risk (2% of account)
-        balance = await broker.get_balance()
-        risk_amount = balance['available'] * 0.02  # 2% risk
+        # Calculate quantity based on notional value (use $100 for testing)
+        notional = 100  # $100 per trade for testing
         
-        # Position size based on stop loss distance
-        sl_distance = abs(current_price - signal.stop_loss) if signal.stop_loss else current_price * 0.02
-        quantity = risk_amount / sl_distance if sl_distance > 0 else risk_amount / current_price
+        # Check market hours for stocks
+        clock = await broker.get_clock()
+        is_crypto = 'USD' in signal.asset or 'BTC' in signal.asset or 'ETH' in signal.asset
         
-        # Round quantity appropriately
-        if current_price > 1000:  # High priced assets like BTC
-            quantity = round(quantity, 4)
-        elif current_price > 100:
-            quantity = round(quantity, 2)
+        if not clock['is_open'] and not is_crypto:
+            # Market closed, place GTC order
+            time_in_force = 'gtc'
+            logger.info(f"Market closed, placing GTC order for {symbol}")
         else:
-            quantity = round(quantity, 0)
+            time_in_force = 'gtc'
         
-        # Ensure minimum quantity
-        quantity = max(quantity, 0.001 if 'BTC' in symbol else 1)
-        
-        # Check if we have TP and SL for bracket order
-        if signal.take_profits and signal.stop_loss:
-            # Use bracket order (entry + TP + SL)
-            result = await broker.place_bracket_order(
-                symbol=symbol,
-                side=side,
-                quantity=quantity,
-                take_profit_price=signal.take_profits[0],
-                stop_loss_price=signal.stop_loss
-            )
-        else:
-            # Simple market order
-            result = await broker.place_market_order(
-                symbol=symbol,
-                side=side,
-                quantity=quantity
-            )
+        # For simplicity, use notional (dollar amount) instead of quantity
+        # This works for both stocks and crypto with fractional shares
+        result = await broker.place_market_order(
+            symbol=symbol,
+            side=side,
+            notional=notional,
+            time_in_force=time_in_force
+        )
         
         await broker.close()
         
@@ -284,7 +287,7 @@ async def execute_trade(input: TradeCreate):
         )
         
         # Also track in paper trading engine for dashboard
-        trade = trading_engine.execute_signal(signal, quantity)
+        trade = trading_engine.execute_signal(signal)
         if trade:
             await db.trades.insert_one(trade.to_dict())
         
@@ -294,15 +297,16 @@ async def execute_trade(input: TradeCreate):
             "order_id": result.get('order_id'),
             "symbol": symbol,
             "side": side,
-            "quantity": quantity,
+            "notional": notional,
             "status": result.get('status'),
             "type": result.get('type'),
-            "order_class": result.get('order_class'),
-            "paper_trade": trade.to_dict() if trade else None
+            "message": f"Order placed for ${notional} of {symbol}"
         }
         
     except AlpacaAPIError as e:
         raise HTTPException(status_code=400, detail=f"Alpaca error: {str(e)}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Trade execution error: {e}")
         raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
