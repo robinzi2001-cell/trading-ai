@@ -28,7 +28,13 @@ from services.alpaca_broker import create_alpaca_broker, AlpacaAPIError, AlpacaB
 from services.telegram_bot import init_telegram_bot, get_telegram_bot
 from services.telegram_channel_monitor import init_channel_monitor, get_channel_monitor
 from services.ai_analyzer import get_ai_analyzer, analyze_signal as ai_analyze_signal, analyze_social_post
-from services.auto_execute import init_auto_execute_engine, get_auto_execute_engine, AutoExecuteConfig
+from services.auto_execute_alpaca import (
+    init_auto_execute_engine, 
+    get_auto_execute_engine, 
+    AutoExecuteConfig,
+    ExecutionMode,
+    RiskConfig
+)
 from services.notification_service import init_notification_service, get_notification_service
 from services.x_twitter_monitor import analyze_tweet, get_x_monitor, INFLUENTIAL_ACCOUNTS
 from services.twitter_rss_monitor import (
