@@ -173,25 +173,45 @@ export default function AICenter() {
             {/* Broker Mode */}
             <div className={cn(
               "p-3 rounded-lg flex items-center justify-between",
-              autoExecuteStatus?.use_binance 
-                ? "bg-yellow-500/10 border border-yellow-500/30" 
-                : "bg-zinc-800/50"
+              autoExecuteStatus?.mode === 'alpaca_paper'
+                ? "bg-emerald-500/10 border border-emerald-500/30" 
+                : "bg-yellow-500/10 border border-yellow-500/30"
             )}>
               <div className="flex items-center gap-2">
-                <Zap className={cn("w-4 h-4", autoExecuteStatus?.use_binance ? "text-yellow-500" : "text-zinc-500")} />
+                <Zap className={cn("w-4 h-4", autoExecuteStatus?.broker_connected ? "text-emerald-500" : "text-yellow-500")} />
                 <div>
                   <span className="text-sm font-medium text-white">
-                    {autoExecuteStatus?.use_binance ? 'Binance Testnet' : 'Paper Trading'}
+                    {autoExecuteStatus?.mode === 'alpaca_paper' ? 'Alpaca Paper' : 
+                     autoExecuteStatus?.mode === 'alpaca_live' ? 'Alpaca LIVE' : 'Paper Trading'}
                   </span>
                   <p className="text-[10px] text-zinc-500">
-                    {autoExecuteStatus?.use_binance ? 'Echte Orders auf Testnet' : 'Simulierte Trades'}
+                    {autoExecuteStatus?.broker_connected ? 'Verbunden' : 'Nicht verbunden'}
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={autoExecuteStatus?.use_binance || false}
-                onCheckedChange={(checked) => updateAutoExecute({ use_binance: checked })}
-              />
+              {autoExecuteStatus?.broker_connected && (
+                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                  LIVE
+                </span>
+              )}
+            </div>
+
+            {/* Risk Config */}
+            <div className="p-3 rounded-lg bg-zinc-800/30 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-400">Trade Betrag</span>
+                <span className="text-white font-mono">${autoExecuteStatus?.risk_config?.default_trade_amount || 100}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-400">Max. Positionen</span>
+                <span className="text-white font-mono">{autoExecuteStatus?.max_open_positions || 5}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-zinc-400">Fehler in Folge</span>
+                <span className={cn("font-mono", autoExecuteStatus?.consecutive_errors > 0 ? "text-red-400" : "text-emerald-400")}>
+                  {autoExecuteStatus?.consecutive_errors || 0}
+                </span>
+              </div>
             </div>
 
             {/* Settings */}
