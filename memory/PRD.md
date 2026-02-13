@@ -91,22 +91,19 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 - Signal-Parsing für beide Formate
 - Bot Commands (/start, /help, /status, /signal)
 
-### 2026-02-11 - Phase 3: Binance Integration
-- Binance Futures Testnet verbunden
-- Balance & Positions API
-- Order Execution vorbereitet
-- $5,000 USDT Testguthaben
-
-### 2026-02-11 - Phase 4: AI & Automatisierung
+### 2026-02-11 - Phase 3: AI & Automatisierung
 - AI Signal-Analyse (GPT-4o via Emergent LLM)
 - Auto-Execute Engine mit konfigurierbaren Schwellwerten
 - X/Twitter Sentiment Analyse
 - AI Center UI Seite
 - Notification Service für Telegram Alerts
 
-### 2026-02-11 - Phase 5: Dokumentation
-- Umfassende README.md erstellt
-- PRD.md aktualisiert
+### 2026-02-12 - Phase 4: Alpaca Broker Integration
+- Binance entfernt (regionale Beschränkungen)
+- Alpaca Paper Trading integriert ($100,000 Testguthaben)
+- Unterstützt: Aktien (US Markets), Crypto 24/7
+- Features: Fractional Shares, Bracket Orders, Extended Hours
+- API Endpoints für Orders, Positions, Balance
 
 ---
 
