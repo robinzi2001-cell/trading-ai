@@ -157,9 +157,9 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
             <MessageCircle className="w-4 h-4 mr-2" />
             Telegram
           </TabsTrigger>
-          <TabsTrigger value="binance" className="data-[state=active]:bg-white/10">
+          <TabsTrigger value="broker" className="data-[state=active]:bg-white/10">
             <Wallet className="w-4 h-4 mr-2" />
-            Binance
+            Alpaca
           </TabsTrigger>
           <TabsTrigger value="sources" className="data-[state=active]:bg-white/10">
             <Radio className="w-4 h-4 mr-2" />
