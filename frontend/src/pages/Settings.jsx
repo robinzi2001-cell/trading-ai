@@ -39,7 +39,7 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
 
   const [saving, setSaving] = useState(false);
   const [telegramConfig, setTelegramConfig] = useState(null);
-  const [binanceConfig, setBinanceConfig] = useState(null);
+  const [brokerConfig, setBrokerConfig] = useState(null);
   const [knownChannels, setKnownChannels] = useState([]);
   const [botStatus, setBotStatus] = useState(null);
 
@@ -49,14 +49,14 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
 
   const fetchIntegrationConfigs = async () => {
     try {
-      const [tgRes, bnRes, channelsRes, botRes] = await Promise.all([
+      const [tgRes, brokerRes, channelsRes, botRes] = await Promise.all([
         api.get('/telegram/config'),
-        api.get('/binance/config'),
+        api.get('/broker/config'),
         api.get('/telegram/channels'),
         api.get('/telegram/bot/status')
       ]);
       setTelegramConfig(tgRes.data);
-      setBinanceConfig(bnRes.data);
+      setBrokerConfig(brokerRes.data);
       setKnownChannels(channelsRes.data.channels || []);
       setBotStatus(botRes.data);
     } catch (error) {
