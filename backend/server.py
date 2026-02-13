@@ -211,7 +211,7 @@ async def get_trade(trade_id: str):
 
 @api_router.post("/trades/execute", response_model=dict)
 async def execute_trade(input: TradeCreate):
-    """Execute a trade from a signal"""
+    """Execute a trade from a signal - uses Alpaca broker"""
     # Get the signal
     signal_data = await db.signals.find_one({"id": input.signal_id}, {"_id": 0})
     if not signal_data:
@@ -222,22 +222,90 @@ async def execute_trade(input: TradeCreate):
     if signal.executed:
         raise HTTPException(status_code=400, detail="Signal already executed")
     
-    # Execute the trade
-    trade = trading_engine.execute_signal(signal, input.quantity)
+    # Convert crypto symbols for Alpaca (BTC/USDT -> BTCUSD)
+    symbol = signal.asset.replace('/', '').replace('USDT', 'USD')
     
-    if not trade:
-        raise HTTPException(status_code=400, detail="Trade rejected by risk manager")
+    # Determine side
+    side = 'buy' if signal.action.lower() in ['long', 'buy'] else 'sell'
     
-    # Mark signal as executed
-    await db.signals.update_one(
-        {"id": input.signal_id},
-        {"$set": {"executed": True}}
-    )
-    
-    # Store trade in DB
-    await db.trades.insert_one(trade.to_dict())
-    
-    return trade.to_dict()
+    try:
+        broker = create_alpaca_broker(paper=True)
+        
+        # Get current price to calculate quantity
+        try:
+            quote = await broker.get_quote(symbol)
+            current_price = quote.get('price', signal.entry)
+        except:
+            current_price = signal.entry
+        
+        # Calculate quantity based on risk (2% of account)
+        balance = await broker.get_balance()
+        risk_amount = balance['available'] * 0.02  # 2% risk
+        
+        # Position size based on stop loss distance
+        sl_distance = abs(current_price - signal.stop_loss) if signal.stop_loss else current_price * 0.02
+        quantity = risk_amount / sl_distance if sl_distance > 0 else risk_amount / current_price
+        
+        # Round quantity appropriately
+        if current_price > 1000:  # High priced assets like BTC
+            quantity = round(quantity, 4)
+        elif current_price > 100:
+            quantity = round(quantity, 2)
+        else:
+            quantity = round(quantity, 0)
+        
+        # Ensure minimum quantity
+        quantity = max(quantity, 0.001 if 'BTC' in symbol else 1)
+        
+        # Check if we have TP and SL for bracket order
+        if signal.take_profits and signal.stop_loss:
+            # Use bracket order (entry + TP + SL)
+            result = await broker.place_bracket_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity,
+                take_profit_price=signal.take_profits[0],
+                stop_loss_price=signal.stop_loss
+            )
+        else:
+            # Simple market order
+            result = await broker.place_market_order(
+                symbol=symbol,
+                side=side,
+                quantity=quantity
+            )
+        
+        await broker.close()
+        
+        # Mark signal as executed
+        await db.signals.update_one(
+            {"id": input.signal_id},
+            {"$set": {"executed": True}}
+        )
+        
+        # Also track in paper trading engine for dashboard
+        trade = trading_engine.execute_signal(signal, quantity)
+        if trade:
+            await db.trades.insert_one(trade.to_dict())
+        
+        return {
+            "success": True,
+            "broker": "alpaca",
+            "order_id": result.get('order_id'),
+            "symbol": symbol,
+            "side": side,
+            "quantity": quantity,
+            "status": result.get('status'),
+            "type": result.get('type'),
+            "order_class": result.get('order_class'),
+            "paper_trade": trade.to_dict() if trade else None
+        }
+        
+    except AlpacaAPIError as e:
+        raise HTTPException(status_code=400, detail=f"Alpaca error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Trade execution error: {e}")
+        raise HTTPException(status_code=500, detail=f"Trade execution failed: {str(e)}")
 
 
 @api_router.post("/trades/close", response_model=dict)
