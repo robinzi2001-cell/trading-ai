@@ -996,7 +996,8 @@ async def update_auto_execute_config(
     min_ai_score: float = None,
     require_ai_approval: bool = None,
     max_daily_trades: int = None,
-    use_binance: bool = None
+    max_open_positions: int = None,
+    default_trade_amount: float = None
 ):
     """Update auto-execute configuration"""
     engine = get_auto_execute_engine()
@@ -1005,22 +1006,41 @@ async def update_auto_execute_config(
     
     updates = {}
     if enabled is not None:
-        updates['enabled'] = enabled
+        engine.config.enabled = enabled
     if min_confidence is not None:
-        updates['min_confidence'] = min_confidence
+        engine.config.min_confidence = min_confidence
     if min_ai_score is not None:
-        updates['min_ai_score'] = min_ai_score
+        engine.config.min_ai_score = min_ai_score
     if require_ai_approval is not None:
-        updates['require_ai_approval'] = require_ai_approval
+        engine.config.require_ai_approval = require_ai_approval
     if max_daily_trades is not None:
-        updates['max_daily_trades'] = max_daily_trades
-    if use_binance is not None:
-        updates['use_binance'] = use_binance
-    
-    if updates:
-        engine.update_config(**updates)
+        engine.config.max_daily_trades = max_daily_trades
+    if max_open_positions is not None:
+        engine.config.max_open_positions = max_open_positions
+    if default_trade_amount is not None:
+        engine.config.risk.default_trade_amount = default_trade_amount
     
     return engine.get_status()
+
+
+@api_router.get("/auto-execute/health")
+async def get_auto_execute_health():
+    """Get auto-execute health status"""
+    engine = get_auto_execute_engine()
+    if not engine:
+        return {"healthy": False, "error": "Engine not initialized"}
+    
+    return await engine.health_check()
+
+
+@api_router.get("/auto-execute/history")
+async def get_auto_execute_history(limit: int = 20):
+    """Get recent auto-execute trade history"""
+    engine = get_auto_execute_engine()
+    if not engine:
+        return {"trades": []}
+    
+    return {"trades": engine.get_trade_history(limit)}
 
 
 # ============ AI ANALYSIS ENDPOINTS ============
