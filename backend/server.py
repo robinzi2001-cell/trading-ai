@@ -1374,25 +1374,28 @@ async def startup():
         telegram_bot_task = asyncio.create_task(bot.start_polling())
         logger.info("Telegram bot started")
     
-    # Initialize Notification Service
-    notifier = init_notification_service(bot)
+    # Initialize Notification Service with user's chat ID
+    notifier = init_notification_service(bot, chat_ids=[8202282349])
     logger.info("Notification service initialized")
     
-    # Initialize Auto-Execute Engine with Binance Testnet support
+    # Initialize Auto-Execute Engine with Alpaca
     auto_config = AutoExecuteConfig(
-        enabled=True,  # Enabled by default for automatic trading
+        enabled=True,
+        mode=ExecutionMode.ALPACA_PAPER,
         min_confidence=0.6,
         min_ai_score=60,
         require_ai_approval=True,
         max_daily_trades=10,
-        use_binance=True  # Use Binance Testnet for real execution
+        max_open_positions=5,
+        risk=RiskConfig(
+            default_trade_amount=100.0,  # $100 per trade
+            max_risk_per_trade=0.02,     # 2% risk
+            scale_with_confidence=True    # Scale with AI score
+        )
     )
-    init_auto_execute_engine(
-        trading_engine=trading_engine,
-        config=auto_config,
-        notification_callback=notification_callback
-    )
-    logger.info("Auto-execute engine initialized (Binance Testnet mode)")
+    
+    auto_engine = await init_auto_execute_engine(auto_config)
+    logger.info(f"Auto-execute engine initialized (mode={auto_config.mode.value})")
     
     # Initialize Channel Monitor (Evening Trader, Fat Pig Signals)
     monitor = await init_channel_monitor(telegram_signal_callback)
