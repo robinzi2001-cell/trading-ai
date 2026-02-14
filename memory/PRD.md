@@ -14,9 +14,9 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 - Risk-basierte Position Sizing
 - Paper Trading Simulation
 - Real-time Dashboard mit P&L Tracking
-- Broker Integration (Binance Futures Testnet)
+- **Alpaca Broker Integration (Paper + Live)**
 - Auto-Execute mit AI Approval
-- X/Twitter Sentiment Analyse
+- **Dynamische Telegram-Kanal-Verwaltung**
 
 ---
 
@@ -32,15 +32,16 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
   - Telegram Bot Service (@traiding_r2d2_bot)
   - Telegram Channel Monitor (Telethon)
   - AI Analyzer (GPT-4o via Emergent LLM)
-  - Auto-Execute Engine
+  - Auto-Execute Engine (Alpaca)
   - Notification Service
-  - Binance Broker (Testnet)
+  - **Alpaca Broker (Paper + Live Trading)**
 
 ### Frontend
 - **Framework**: React 19
 - **UI**: Tailwind CSS + Shadcn/UI
 - **State**: Local React State
 - **Pages**: Dashboard, Signals, Trades, Portfolio, Settings, AI Center
+- **Components**: TelegramChannelManager (Kanal-Verwaltung)
 
 ### Key Files
 ```
@@ -53,13 +54,16 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 ├── services/
 │   ├── signal_parser.py               # Multi-Format Parser
 │   ├── risk_manager.py                # Risk Management
-│   ├── trading_engine.py              # Paper Trading
+│   ├── trading_engine.py              # Paper Trading Engine
 │   ├── telegram_bot.py                # Bot Handler
 │   ├── telegram_channel_monitor.py    # Channel Listener
+│   ├── telegram_listener.py           # Signal Parser
 │   ├── ai_analyzer.py                 # GPT Analyse
-│   ├── auto_execute.py                # Auto-Execute Logic
+│   ├── auto_execute_alpaca.py         # Auto-Execute Logic
 │   ├── notification_service.py        # Telegram Alerts
-│   └── binance_broker.py              # Binance API
+│   ├── alpaca_broker.py               # Alpaca API Integration
+│   ├── x_twitter_monitor.py           # X/Twitter Analysis
+│   └── twitter_rss_monitor.py         # RSS Monitoring
 
 /app/frontend/src/
 ├── App.js                             # Main App + Router
@@ -68,10 +72,11 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 │   ├── Signals.jsx
 │   ├── Trades.jsx
 │   ├── Portfolio.jsx
-│   ├── Settings.jsx
+│   ├── Settings.jsx                   # Mit Telegram Tab
 │   └── AICenter.jsx
 └── components/
-    └── ui/                            # Shadcn Components
+    ├── ui/                            # Shadcn Components
+    └── TelegramChannelManager.jsx     # NEU: Kanal-Verwaltung
 ```
 
 ---
@@ -107,36 +112,47 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 
 ### 2026-02-13 - Phase 5: End-to-End Auto-Execute
 - Neuer Auto-Execute Service mit Alpaca-Integration
-- Professionelles Money Management:
-  - Risk-basierte Position Sizing (2% pro Trade)
-  - AI Score Scaling (höherer Score = größere Position)
-  - Max. Positionen Limit (5)
-  - Cooldown zwischen Trades
-  - Circuit Breaker bei Fehlern
+- Professionelles Money Management
 - Signal Flow: Telegram/RSS → AI Analyse → Alpaca Order → Notification
 - Dashboard zeigt Alpaca-Positionen mit Live P&L
-- Health Monitoring und Reliability Features
+
+### 2026-02-14 - Phase 6: Telegram-Kanal-Verwaltung & Stabilisierung
+- **Backend repariert** (fehlende Module erstellt):
+  - trading_engine.py - Paper Trading Engine
+  - telegram_listener.py - Signal Parser
+  - x_twitter_monitor.py - Twitter Analysis
+  - twitter_rss_monitor.py - RSS Monitoring
+- **Alpaca Live API Keys konfiguriert**
+- **Dynamische Telegram-Kanal-Verwaltung**:
+  - POST /api/telegram/channels/add - Kanal hinzufügen
+  - DELETE /api/telegram/channels/{username} - Kanal entfernen
+  - PUT /api/telegram/channels/{username}/toggle - Aktivieren/Deaktivieren
+  - GET /api/telegram/channels/list - Alle Kanäle abrufen
+- **TelegramChannelManager Komponente** im Frontend
+- **Tests**: 100% Erfolgsrate (Backend + Frontend)
 
 ---
 
 ## Feature Status
 
-### Implementiert
+### Implementiert ✅
 | Feature | Status | Beschreibung |
 |---------|--------|--------------|
 | Telegram Bot | AKTIV | @traiding_r2d2_bot |
 | Channel Monitor | AKTIV | Evening Trader + Fat Pig Signals |
+| **Telegram Kanal-Verwaltung** | AKTIV | Dynamisch Kanäle hinzufügen |
 | KI Signal-Analyse | AKTIV | GPT-4o Score 0-100 |
 | Auto-Execute | AKTIV | Min. Score: 60 |
-| Binance Testnet | VERBUNDEN | $5,000 USDT |
-| X/Twitter Analyse | AKTIV | Trump, Elon Musk, etc. |
+| **Alpaca Paper Trading** | VERBUNDEN | ~$100,000 Balance |
+| **Alpaca Live Keys** | KONFIGURIERT | Bereit für Live Trading |
+| X/Twitter Analyse | AKTIV | Elon Musk, etc. |
 | Benachrichtigungen | AKTIV | Telegram Alerts |
 | Paper Trading | AKTIV | Risikofrei testen |
 | Risk Management | AKTIV | Position Sizing, R:R |
 | Dashboard | AKTIV | Real-time UI |
 
 ### Geplant (P1)
-- [ ] Live Binance Trading (Paper -> Live Switch)
+- [ ] **Paper/Live Toggle Button** im UI für Alpaca
 - [ ] Trailing Stop Loss
 - [ ] Partial Take Profits
 - [ ] Performance Analytics
@@ -145,7 +161,7 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 - [ ] MetaTrader 5 Integration
 - [ ] Interactive Brokers Integration
 - [ ] Email Signal Parser (IMAP)
-- [ ] Mehr Signal-Channels
+- [ ] Mehr Signal-Channels (via Manager hinzufügbar)
 - [ ] Mobile App (React Native)
 - [ ] Backtesting Engine
 
@@ -181,10 +197,17 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
 ### Telegram
 - `GET /api/telegram/bot/status` - Bot-Status
 - `GET /api/telegram/channels/status` - Channel-Monitor Status
+- **`GET /api/telegram/channels/list` - Alle Kanäle abrufen**
+- **`POST /api/telegram/channels/add` - Kanal hinzufügen**
+- **`DELETE /api/telegram/channels/{username}` - Kanal entfernen**
+- **`PUT /api/telegram/channels/{username}/toggle` - Aktivieren/Deaktivieren**
 
-### Binance
-- `GET /api/binance/balance` - Kontostand
-- `GET /api/binance/positions` - Offene Positionen
+### Alpaca Broker
+- `GET /api/broker/config` - Broker-Konfiguration
+- `GET /api/broker/balance` - Kontostand
+- `GET /api/broker/positions` - Offene Positionen
+- `GET /api/broker/orders` - Orders abrufen
+- `POST /api/broker/order` - Order platzieren
 
 ---
 
@@ -205,6 +228,17 @@ Trading KI die Signale aus Top-Kreisen verwendet um wahrscheinliche Signale raus
   "executed": false,
   "dismissed": false,
   "ai_analysis": {...}
+}
+```
+
+### telegram_channels (NEU)
+```json
+{
+  "username": "testsignals",
+  "name": "@testsignals",
+  "enabled": true,
+  "added_at": "2026-02-14T01:41:03.550922+00:00",
+  "signals_received": 0
 }
 ```
 
@@ -235,9 +269,10 @@ DB_NAME=trading_ai
 TELEGRAM_BOT_TOKEN=xxx
 TELEGRAM_API_ID=xxx
 TELEGRAM_API_HASH=xxx
-BINANCE_API_KEY=xxx
-BINANCE_SECRET=xxx
-BINANCE_TESTNET=true
+ALPACA_API_KEY=xxx (Paper)
+ALPACA_SECRET_KEY=xxx (Paper)
+ALPACA_LIVE_API_KEY=xxx (Live)
+ALPACA_LIVE_SECRET_KEY=xxx (Live)
 EMERGENT_LLM_KEY=xxx
 ```
 
@@ -248,58 +283,37 @@ REACT_APP_BACKEND_URL=https://...
 
 ---
 
-## Known Issues
-Keine bekannten Probleme zum aktuellen Zeitpunkt.
+## Test Results (2026-02-14)
 
----
+### Iteration 4 - 100% Success Rate ✅
+**Backend Tests**: 13/13 passed
+- Health Check ✅
+- Telegram Channel CRUD (add, list, delete, toggle) ✅
+- Alpaca Broker (config, balance, positions) ✅
+- Error handling (404, 400) ✅
 
-## Completed Tests (2026-02-11)
-
-### End-to-End Workflow Test ✅
-1. Signal erstellt (BTC/USDT LONG via Webhook)
-2. AI Analyse durchgeführt (Score: 75/100, Quality: good)
-3. Trade ausgeführt (Paper Trading: 0.075 BTC @ $96,986)
-4. Position im Dashboard sichtbar
-
-### Komponenten-Tests ✅
-- Telegram Bot: AKTIV (@traiding_r2d2_bot)
-- Channel Monitor: AKTIV (Evening Trader + Fat Pig Signals)
-- AI Analyzer: VERFÜGBAR (GPT-4o via Emergent LLM)
-- Auto-Execute: AKTIVIERT (Paper Trading Mode)
-- Binance Testnet: Keys ungültig - Paper Trading wird verwendet
-- X/Twitter Analyse: FUNKTIONIERT
-
-### Testing Agent Results (iteration_3.json)
-- Backend Tests: 100% (16/16 bestanden)
-- Frontend Tests: 100%
-- Bug behoben: rssRes capture in AICenter.jsx
-
-### Verifizierte Features ✅
-- Execute Order: Paper Trading funktioniert (Trade erstellen, Position öffnen)
-- Trade Close: P&L Berechnung funktioniert
-- Auto-Execute: Aktiviert mit Binance Testnet Modus
-- Twitter RSS: Konfiguriert (5 Accounts), aber Nitter-Instanzen down → Manueller Modus
-- AI Analyse: Signal-Scoring und Tweet-Impact-Analyse funktionieren
-- Telegram Bot: Läuft (@traiding_r2d2_bot)
+**Frontend Tests**: 100%
+- Settings Page Navigation ✅
+- TelegramChannelManager Component ✅
+- Channel Add/Toggle/Delete UI ✅
 
 ---
 
 ## Next Steps
 
-### Empfohlen (P1)
-1. **Neue Binance Testnet Keys** - Erstelle neue API Keys auf https://testnet.binancefuture.com
-2. Aktiviere dann Binance Testnet Modus im AI Center
+### Priorität 1 (P1)
+1. **Paper/Live Toggle** - UI Button für Alpaca Modus-Wechsel
+2. Signal-Erkennung verbessern für verschiedene Formate
 
-### Bald (P1)
-3. Live Binance Trading aktivieren
-4. Mehr Signal-Channels hinzufügen
-5. Performance-Berichte
+### Priorität 2 (P2)
+3. Performance Reports / Analytics
+4. Trailing Stop Loss implementieren
 
-### Später (P2)
-6. Mobile App
-7. Backtesting Engine
-8. Multi-Broker Support
+### Backlog (P3)
+5. Mobile App
+6. Backtesting Engine
+7. Mehr Broker-Integrationen
 
 ---
 
-*Letzte Aktualisierung: 11. Februar 2026*
+*Letzte Aktualisierung: 14. Februar 2026*
