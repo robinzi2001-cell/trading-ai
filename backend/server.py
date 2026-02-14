@@ -1030,12 +1030,16 @@ async def get_channel_monitor_status():
     """Get channel monitor status"""
     monitor = get_channel_monitor()
     
+    # Also get saved channels from DB
+    saved_channels = await db.telegram_channels.find({}, {"_id": 0}).to_list(100)
+    
     if not monitor:
         return {
             "configured": bool(os.environ.get('TELEGRAM_API_ID')),
             "authorized": False,
             "running": False,
-            "channels": []
+            "channels": [],
+            "saved_channels": saved_channels
         }
     
     try:
@@ -1052,14 +1056,124 @@ async def get_channel_monitor_status():
                 }
                 for ch_id, info in monitor.monitored_entities.items()
             ],
-            "default_channels": monitor.DEFAULT_CHANNELS
+            "default_channels": monitor.DEFAULT_CHANNELS,
+            "saved_channels": saved_channels
         }
     except Exception as e:
         return {
             "configured": True,
             "authorized": False,
-            "error": str(e)
+            "error": str(e),
+            "saved_channels": saved_channels
         }
+
+
+class TelegramChannelAdd(PydanticBaseModel):
+    """Model for adding a Telegram channel"""
+    username: str  # e.g. @telegramsignale or telegramsignale
+    name: Optional[str] = None
+    enabled: bool = True
+
+
+@api_router.post("/telegram/channels/add")
+async def add_telegram_channel(channel: TelegramChannelAdd):
+    """Add a new Telegram channel to monitor for signals"""
+    # Clean username (remove @ if present)
+    username = channel.username.strip().lstrip('@').lower()
+    
+    if not username:
+        raise HTTPException(status_code=400, detail="Username darf nicht leer sein")
+    
+    # Check if already exists
+    existing = await db.telegram_channels.find_one({"username": username})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Kanal @{username} existiert bereits")
+    
+    # Save to database
+    channel_data = {
+        "username": username,
+        "name": channel.name or f"@{username}",
+        "enabled": channel.enabled,
+        "added_at": datetime.now(timezone.utc).isoformat(),
+        "signals_received": 0
+    }
+    
+    await db.telegram_channels.insert_one(channel_data)
+    
+    # Try to add to monitor if running
+    monitor = get_channel_monitor()
+    if monitor and monitor.running:
+        try:
+            if username not in monitor.channels:
+                monitor.channels.append(username)
+                await monitor.resolve_channels()
+                logger.info(f"Channel @{username} added to live monitoring")
+        except Exception as e:
+            logger.warning(f"Could not add channel to live monitor: {e}")
+    
+    # Send notification
+    notifier = get_notification_service()
+    if notifier:
+        await notifier.send(
+            f"📡 <b>Neuer Signal-Kanal hinzugefügt</b>\n\n"
+            f"Kanal: @{username}\n"
+            f"Status: {'Aktiv' if channel.enabled else 'Deaktiviert'}"
+        )
+    
+    return {
+        "success": True,
+        "message": f"Kanal @{username} hinzugefügt",
+        "channel": {**channel_data, "_id": None}
+    }
+
+
+@api_router.get("/telegram/channels/list")
+async def list_telegram_channels():
+    """Get list of all saved Telegram channels"""
+    channels = await db.telegram_channels.find({}, {"_id": 0}).to_list(100)
+    return {"channels": channels, "count": len(channels)}
+
+
+@api_router.delete("/telegram/channels/{username}")
+async def remove_telegram_channel(username: str):
+    """Remove a Telegram channel from monitoring"""
+    username = username.strip().lstrip('@').lower()
+    
+    result = await db.telegram_channels.delete_one({"username": username})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Kanal @{username} nicht gefunden")
+    
+    # Remove from monitor if running
+    monitor = get_channel_monitor()
+    if monitor and username in monitor.channels:
+        monitor.channels.remove(username)
+    
+    return {"success": True, "message": f"Kanal @{username} entfernt"}
+
+
+@api_router.put("/telegram/channels/{username}/toggle")
+async def toggle_telegram_channel(username: str):
+    """Toggle channel enabled/disabled"""
+    username = username.strip().lstrip('@').lower()
+    
+    channel = await db.telegram_channels.find_one({"username": username})
+    if not channel:
+        raise HTTPException(status_code=404, detail=f"Kanal @{username} nicht gefunden")
+    
+    new_status = not channel.get("enabled", True)
+    
+    await db.telegram_channels.update_one(
+        {"username": username},
+        {"$set": {"enabled": new_status}}
+    )
+    
+    return {
+        "success": True,
+        "username": username,
+        "enabled": new_status,
+        "message": f"Kanal @{username} {'aktiviert' if new_status else 'deaktiviert'}"
+    }
 
 
 # ============ AUTO-EXECUTE ENDPOINTS ============
