@@ -334,6 +334,11 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
               </Card>
             )}
 
+            {/* Telegram Channel Manager */}
+            <div className="lg:col-span-2">
+              <TelegramChannelManager />
+            </div>
+
             <Card className="bg-zinc-900/50 border-white/5">
               <CardHeader>
                 <CardTitle className="font-heading text-lg font-semibold tracking-tight uppercase text-white flex items-center gap-2">
@@ -419,7 +424,7 @@ export default function Settings({ settings, onUpdate, onReset, loading }) {
 
                 <div className="p-3 rounded-lg border border-dashed border-white/10 text-center">
                   <p className="text-xs text-zinc-500">
-                    Weitere Channels können manuell hinzugefügt werden
+                    Nutze den Signal-Kanäle Manager oben, um eigene Kanäle hinzuzufügen
                   </p>
                 </div>
               </CardContent>
